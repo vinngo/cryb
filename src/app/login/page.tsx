@@ -16,14 +16,17 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import Link from "next/link";
+import { login, signup } from "./actions";
 
 export default function LoginPage() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [activeTab, setActiveTab] = useState("login");
+
+  //check if there's a previous login error
+  const error = searchParams.get("error");
 
   useEffect(() => {
     // Check if there's a tab parameter in the URL
@@ -32,26 +35,6 @@ export default function LoginPage() {
       setActiveTab("signup");
     }
   }, [searchParams]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, we would authenticate the user
-    // For the prototype, we'll just redirect to the dashboard
-    router.push("/dashboard");
-  };
-
-  const handleSignup = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, we would create a new user
-    // For the prototype, we'll just redirect to the dashboard
-    router.push("/dashboard");
-  };
-
-  const handleOAuthLogin = (provider: string) => {
-    // In a real app, we would authenticate with the provider
-    // For the prototype, we'll just redirect to the dashboard
-    router.push("/dashboard");
-  };
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4">
@@ -84,12 +67,13 @@ export default function LoginPage() {
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
             </TabsList>
             <TabsContent value="login">
-              <form onSubmit={handleLogin} className="space-y-4">
+              <form action={login} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
+                    name="email"
                     placeholder="your.email@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -101,23 +85,30 @@ export default function LoginPage() {
                   <Input
                     id="password"
                     type="password"
+                    name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                 </div>
+                {error === "invalid" && (
+                  <div className="text-red-500 text-sm mb-4">
+                    Invalid email or password.
+                  </div>
+                )}
                 <Button type="submit" className="w-full">
                   Login
                 </Button>
               </form>
             </TabsContent>
             <TabsContent value="signup">
-              <form onSubmit={handleSignup} className="space-y-4">
+              <form action={signup} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="signup-email">Email</Label>
                   <Input
                     id="signup-email"
                     type="email"
+                    name="email"
                     placeholder="your.email@example.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
@@ -129,6 +120,7 @@ export default function LoginPage() {
                   <Input
                     id="signup-password"
                     type="password"
+                    name="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
@@ -140,6 +132,7 @@ export default function LoginPage() {
                   </Label>
                   <Input
                     id="invite-code"
+                    name="invite-code"
                     placeholder="Enter code to join existing house"
                     value={inviteCode}
                     onChange={(e) => setInviteCode(e.target.value)}
