@@ -37,15 +37,53 @@ export async function signup(formData: FormData) {
   const data = {
     email: formData.get("email") as string,
     password: formData.get("password") as string,
-    homecode: formData.get(""),
+    display_name: formData.get("display-name") as string,
   };
 
-  const { error } = await supabase.auth.signUp(data);
+  const { data: signUpData, error } = await supabase.auth.signUp({
+    email: data.email,
+    password: data.password,
+  });
 
-  if (error) {
+  const user = signUpData.user;
+
+  if (!user || error) {
     redirect("/error");
   }
 
+  const { error: displayNameError } = await supabase.from("users").insert({
+    id: user.id,
+    display_name: data.display_name,
+  });
+
+  if (displayNameError) {
+    console.error(displayNameError.message);
+  }
+
+  const inviteCode = formData.get("invite-code") as string;
+
+  const { data: success, error: houseError } = await supabase
+    .from("houses")
+    .select("id")
+    .eq("code", inviteCode)
+    .single();
+
+  if (!success) {
+    // Invalid invite code — still let them into dashboard without house
+    console.log(houseError.message);
+    redirect("/dashboard");
+  }
+
+  const { error: joinHouseError } = await supabase
+    .from("house_members")
+    .insert([
+      { user_id: user.id, house_id: success.id, name: data.display_name },
+    ]);
+
+  if (joinHouseError) {
+    console.log(joinHouseError.message);
+    redirect("/error");
+  }
   revalidatePath("/dashboard", "layout");
   redirect("/dashboard");
 }

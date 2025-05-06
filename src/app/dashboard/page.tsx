@@ -24,8 +24,22 @@ import {
   mockNotes,
   mockUsers,
 } from "@/lib/mock-data";
+import { createClient } from "@/lib/supabase/server";
 
-export default function Dashboard() {
+export default async function Dashboard() {
+  //replace this later with a call to the store
+  const supabase = await createClient();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const { data: userData } = await supabase
+    .from("users")
+    .select("display_name")
+    .eq("id", user?.id)
+    .single();
+
   // Get current user (in a real app, this would come from auth)
   const currentUser = mockUsers[0];
 
@@ -74,8 +88,8 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {currentUser.name}! Here&apos;s what&apos;s happening
-            in your house.
+            Welcome back, {userData?.display_name || currentUser.name}!
+            Here&apos;s what&apos;s happening in your house.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -84,10 +98,10 @@ export default function Dashboard() {
               src={currentUser.avatarUrl || "/placeholder.svg"}
               alt={currentUser.name}
             />
-            <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+            <AvatarFallback>{userData?.display_name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{currentUser.name}</p>
+            <p className="font-medium">{userData?.display_name}</p>
             <p className="text-sm text-muted-foreground">
               {currentUser.house.name}
             </p>

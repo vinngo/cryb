@@ -3,7 +3,7 @@
 import type React from "react";
 
 import { useState, useEffect } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -22,6 +22,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [inviteCode, setInviteCode] = useState("");
   const [activeTab, setActiveTab] = useState("login");
 
@@ -114,6 +115,16 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     required
                   />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="signup-name">Display Name</Label>
+                  <Input
+                    id="signup-name"
+                    type="text"
+                    name="display-name"
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                  ></Input>
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="signup-password">Password</Label>
