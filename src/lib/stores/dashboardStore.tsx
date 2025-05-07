@@ -27,6 +27,7 @@ export const useDashboardStore = create<DashboardData>((set) => ({
   expenses: [],
   loading: true,
   error: null,
+
   async fetchDashboardData() {
     try {
       set({ loading: true, error: null });
@@ -65,6 +66,14 @@ export const useDashboardStore = create<DashboardData>((set) => ({
         supabase.from("chores").select("*").eq("house_id", appUser.house_id),
         supabase.from("expenses").select("*").eq("house_id", appUser.house_id),
       ]);
+
+      if (houseRes.error) console.error("house error:", houseRes.error.message);
+      if (membersRes.error)
+        console.error("members error:", membersRes.error.message);
+      if (choresRes.error)
+        console.error("chores error:", choresRes.error.message);
+      if (expensesRes.error)
+        console.error("expenses error:", expensesRes.error.message);
 
       set({
         user: appUser,

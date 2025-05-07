@@ -17,14 +17,18 @@ import {
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { mockUsers } from "@/lib/mock-data";
+import { useDashboardStore } from "@/lib/stores/dashboardStore";
+import { useEffect } from "react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  // Get current user (in a real app, this would come from auth)
-  const currentUser = mockUsers[0];
+  const { fetchDashboardData, user } = useDashboardStore();
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
 
   const routes = [
     {
@@ -92,12 +96,12 @@ export default function Navbar() {
             <div className="hidden md:flex items-center gap-2">
               <Avatar className="h-8 w-8">
                 <AvatarImage
-                  src={currentUser.avatarUrl || "/placeholder.svg"}
-                  alt={currentUser.name}
+                  src={"/placeholder.svg"}
+                  alt={user?.display_name}
                 />
-                <AvatarFallback>{currentUser.name.charAt(0)}</AvatarFallback>
+                <AvatarFallback>{user?.display_name.charAt(0)}</AvatarFallback>
               </Avatar>
-              <span className="text-sm font-medium">{currentUser.name}</span>
+              <span className="text-sm font-medium">{user?.display_name}</span>
             </div>
 
             <Button
@@ -125,17 +129,17 @@ export default function Navbar() {
                   <div className="p-4 border-b flex items-center gap-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage
-                        src={currentUser.avatarUrl || "/placeholder.svg"}
-                        alt={currentUser.name}
+                        src={"/placeholder.svg"}
+                        alt={user?.display_name}
                       />
                       <AvatarFallback>
-                        {currentUser.name.charAt(0)}
+                        {user?.display_name.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium">{currentUser.name}</p>
+                      <p className="font-medium">{user?.display_name}</p>
                       <p className="text-sm text-muted-foreground">
-                        {currentUser.house.name}
+                        {user?.display_name}
                       </p>
                     </div>
                   </div>

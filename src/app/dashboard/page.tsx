@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Card,
   CardContent,
@@ -18,65 +20,48 @@ import {
   Plus,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  mockChores,
-  mockExpenses,
-  mockNotes,
-  mockUsers,
-} from "@/lib/mock-data";
-import { createClient } from "@/lib/supabase/server";
+import { mockNotes, mockUsers } from "@/lib/mock-data";
+import { useDashboardStore } from "@/lib/stores/dashboardStore";
 
-export default async function Dashboard() {
+export default function Dashboard() {
   //replace this later with a call to the store
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: userData } = await supabase
-    .from("users")
-    .select("display_name")
-    .eq("id", user?.id)
-    .single();
+  const { user, house, members, chores, expenses } = useDashboardStore();
 
   // Get current user (in a real app, this would come from auth)
   const currentUser = mockUsers[0];
 
   // Get upcoming chores (filter for demo)
-  const upcomingChores = mockChores
-    .filter((chore) => !chore.completed)
-    .slice(0, 3);
+  const upcomingChores = chores.filter((chore) => !chore.completed).slice(0, 3);
 
   // Get recent expenses (for demo)
-  const recentExpenses = mockExpenses.slice(0, 3);
+  const recentExpenses = expenses.slice(0, 3);
 
   // Get pinned notes
   const pinnedNotes = mockNotes.filter((note) => note.isPinned).slice(0, 2);
 
   // Calculate balances
-  const totalOwed = mockExpenses
+  const totalOwed = expenses
     .filter(
       (expense) =>
-        expense.sharedWith.includes(currentUser.id) &&
-        expense.paidBy !== currentUser.id,
+        expense.split_between.includes(currentUser.id) &&
+        expense.paid_by !== currentUser.id,
     )
     .reduce((sum, expense) => {
       // Simple split calculation for demo
-      const splitAmount = expense.amount / (expense.sharedWith.length + 1);
+      const splitAmount = expense.amount / (expense.split_between.length + 1);
       return sum + splitAmount;
     }, 0);
 
-  const totalOwing = mockExpenses
+  const totalOwing = expenses
     .filter(
       (expense) =>
-        expense.paidBy === currentUser.id && expense.sharedWith.length > 0,
+        expense.paid_by === currentUser.id && expense.split_between.length > 0,
     )
     .reduce((sum, expense) => {
       // Simple split calculation for demo
       const splitAmount =
-        (expense.amount / (expense.sharedWith.length + 1)) *
-        expense.sharedWith.length;
+        (expense.amount / (expense.split_between.length + 1)) *
+        expense.split_between.length;
       return sum + splitAmount;
     }, 0);
 
@@ -88,8 +73,8 @@ export default async function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {userData?.display_name || currentUser.name}!
-            Here&apos;s what&apos;s happening in your house.
+            Welcome back, {user?.display_name || currentUser.name}! Here&apos;s
+            what&apos;s happening in your house.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -98,13 +83,11 @@ export default async function Dashboard() {
               src={currentUser.avatarUrl || "/placeholder.svg"}
               alt={currentUser.name}
             />
-            <AvatarFallback>{userData?.display_name.charAt(0)}</AvatarFallback>
+            <AvatarFallback>{user?.display_name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div>
-            <p className="font-medium">{userData?.display_name}</p>
-            <p className="text-sm text-muted-foreground">
-              {currentUser.house.name}
-            </p>
+            <p className="font-medium">{user?.display_name}</p>
+            <p className="text-sm text-muted-foreground">{house?.name}</p>
           </div>
         </div>
       </div>
@@ -119,13 +102,12 @@ export default async function Dashboard() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {mockChores.filter((chore) => chore.completed).length}/
-              {mockChores.length}
+              {chores.filter((chore) => chore.completed).length}/{chores.length}
             </div>
             <Progress
               value={
-                (mockChores.filter((chore) => chore.completed).length /
-                  mockChores.length) *
+                (chores.filter((chore) => chore.completed).length /
+                  chores.length) *
                 100
               }
               className="h-2 mt-2"
@@ -156,18 +138,15 @@ export default async function Dashboard() {
             <Home className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{mockUsers.length}</div>
+            <div className="text-2xl font-bold">{members.length}</div>
             <div className="flex -space-x-2 mt-2">
-              {mockUsers.map((user) => (
+              {members.map((user) => (
                 <Avatar
                   key={user.id}
                   className="h-8 w-8 border-2 border-background"
                 >
-                  <AvatarImage
-                    src={user.avatarUrl || "/placeholder.svg"}
-                    alt={user.name}
-                  />
-                  <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                  <AvatarImage src={"/placeholder.svg"} alt={user.name} />
+                  <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
               ))}
             </div>
@@ -220,12 +199,13 @@ export default async function Dashboard() {
                           <div>
                             <p className="font-medium">{chore.title}</p>
                             <p className="text-sm text-muted-foreground">
-                              Due {new Date(chore.dueDate).toLocaleDateString()}
+                              Due{" "}
+                              {new Date(chore.due_date).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
-                        <Badge variant={getChoreVariant(chore.dueDate)}>
-                          {getChoreStatus(chore.dueDate)}
+                        <Badge variant={getChoreVariant(chore.due_date)}>
+                          {getChoreStatus(chore.due_date)}
                         </Badge>
                       </div>
                     ))}
@@ -248,7 +228,7 @@ export default async function Dashboard() {
                   <div className="space-y-4">
                     {recentExpenses.map((expense) => {
                       const paidBy = mockUsers.find(
-                        (user) => user.id === expense.paidBy,
+                        (user) => user.id === expense.paid_by,
                       );
                       return (
                         <div
@@ -261,7 +241,9 @@ export default async function Dashboard() {
                               <p className="font-medium">{expense.title}</p>
                               <p className="text-sm text-muted-foreground">
                                 Paid by {paidBy?.name} •{" "}
-                                {new Date(expense.date).toLocaleDateString()}
+                                {new Date(
+                                  expense.created_at,
+                                ).toLocaleDateString()}
                               </p>
                             </div>
                           </div>
@@ -331,9 +313,9 @@ export default async function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockChores.map((chore) => {
+                {chores.map((chore) => {
                   const assignedTo = mockUsers.find(
-                    (user) => user.id === chore.assignedTo,
+                    (user) => user.id === chore.assigned_to,
                   );
                   return (
                     <div
@@ -350,15 +332,14 @@ export default async function Dashboard() {
                             <span>Assigned to {assignedTo?.name}</span>
                             <span>•</span>
                             <span>
-                              Due {new Date(chore.dueDate).toLocaleDateString()}
+                              Due{" "}
+                              {new Date(chore.due_date).toLocaleDateString()}
                             </span>
-                            <span>•</span>
-                            <span>{chore.frequency}</span>
                           </div>
                         </div>
                       </div>
-                      <Badge variant={getChoreVariant(chore.dueDate)}>
-                        {getChoreStatus(chore.dueDate)}
+                      <Badge variant={getChoreVariant(chore.due_date)}>
+                        {getChoreStatus(chore.due_date)}
                       </Badge>
                     </div>
                   );
@@ -379,11 +360,11 @@ export default async function Dashboard() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {mockExpenses.map((expense) => {
+                {expenses.map((expense) => {
                   const paidBy = mockUsers.find(
-                    (user) => user.id === expense.paidBy,
+                    (user) => user.id === expense.paid_by,
                   );
-                  const sharedWith = expense.sharedWith
+                  const sharedWith = expense.split_between
                     .map((id) => mockUsers.find((user) => user.id === id)?.name)
                     .join(", ");
 
@@ -400,7 +381,9 @@ export default async function Dashboard() {
                             <span>Paid by {paidBy?.name}</span>
                             <span>•</span>
                             <span>
-                              {new Date(expense.date).toLocaleDateString()}
+                              {new Date(
+                                expense.created_at,
+                              ).toLocaleDateString()}
                             </span>
                           </div>
                           {sharedWith && (

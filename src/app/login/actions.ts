@@ -84,6 +84,16 @@ export async function signup(formData: FormData) {
     console.log(joinHouseError.message);
     redirect("/error");
   }
+
+  const { error: updateUserError } = await supabase
+    .from("users")
+    .update("house_id", success.id);
+
+  if (updateUserError) {
+    console.log(updateUserError.message);
+    redirect("/error");
+  }
+
   revalidatePath("/dashboard", "layout");
   redirect("/dashboard");
 }
