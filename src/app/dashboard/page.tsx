@@ -6,10 +6,11 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -18,14 +19,16 @@ import {
   DollarSign,
   Home,
   Plus,
+  FileText,
 } from "lucide-react";
 import Link from "next/link";
-import { mockNotes, mockUsers } from "@/lib/mock-data";
+import { mockUsers } from "@/lib/mock-data";
 import { useDashboardStore } from "@/lib/stores/dashboardStore";
+import { EmptyState } from "@/components/empty-state";
 
 export default function Dashboard() {
   //replace this later with a call to the store
-  const { user, house, members, chores, expenses } = useDashboardStore();
+  const { user, house, members, chores, expenses, notes } = useDashboardStore();
 
   // Get current user (in a real app, this would come from auth)
   const currentUser = mockUsers[0];
@@ -37,7 +40,7 @@ export default function Dashboard() {
   const recentExpenses = expenses.slice(0, 3);
 
   // Get pinned notes
-  const pinnedNotes = mockNotes.filter((note) => note.isPinned).slice(0, 2);
+  const pinnedNotes = notes.filter((note) => note.is_pinned).slice(0, 2);
 
   // Calculate balances
   const totalOwed = expenses
@@ -79,10 +82,6 @@ export default function Dashboard() {
         </div>
         <div className="flex items-center gap-2">
           <Avatar className="h-10 w-10">
-            <AvatarImage
-              src={currentUser.avatarUrl || "/placeholder.svg"}
-              alt={currentUser.name}
-            />
             <AvatarFallback>{user?.display_name.charAt(0)}</AvatarFallback>
           </Avatar>
           <div>
@@ -145,7 +144,6 @@ export default function Dashboard() {
                   key={user.id}
                   className="h-8 w-8 border-2 border-background"
                 >
-                  <AvatarImage src={"/placeholder.svg"} alt={user.name} />
                   <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
               ))}
@@ -204,16 +202,50 @@ export default function Dashboard() {
                             </p>
                           </div>
                         </div>
-                        <Badge variant={getChoreVariant(chore.due_date)}>
-                          {getChoreStatus(chore.due_date)}
+                        <Badge
+                          variant={
+                            getChoreVariant(
+                              new Date(chore.due_date).toLocaleDateString(),
+                            ) as
+                              | "destructive"
+                              | "outline"
+                              | "default"
+                              | "secondary"
+                          }
+                        >
+                          {getChoreStatus(
+                            new Date(chore.due_date).toLocaleDateString(),
+                          )}
                         </Badge>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">No upcoming chores</p>
+                  <EmptyState
+                    icon={CheckCircle}
+                    title="No upcoming chores"
+                    description="Add your first chore to get started"
+                    action={
+                      <Button asChild>
+                        <Link href="/chores/?action=new">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Chore
+                        </Link>
+                      </Button>
+                    }
+                  />
                 )}
               </CardContent>
+              <CardFooter
+                className={upcomingChores.length > 0 ? "pt-0" : "hidden"}
+              >
+                <Button asChild variant="outline" className="w-full">
+                  <Link href="/chores?action=new">
+                    <Plus className="mr-2 h-4 w-4" />
+                    Add New Chore
+                  </Link>
+                </Button>
+              </CardFooter>
             </Card>
 
             <Card>
@@ -255,7 +287,19 @@ export default function Dashboard() {
                     })}
                   </div>
                 ) : (
-                  <p className="text-muted-foreground">No recent expenses</p>
+                  <EmptyState
+                    icon={DollarSign}
+                    title="No expenses yet"
+                    description="Add your first expense to start tracking"
+                    action={
+                      <Button asChild>
+                        <Link href="/expenses">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Expense
+                        </Link>
+                      </Button>
+                    }
+                  />
                 )}
               </CardContent>
             </Card>
@@ -273,7 +317,7 @@ export default function Dashboard() {
                 <div className="grid gap-4 md:grid-cols-2">
                   {pinnedNotes.map((note) => {
                     const author = mockUsers.find(
-                      (user) => user.id === note.createdBy,
+                      (user) => user.id === note.created_by,
                     );
                     return (
                       <Card key={note.id}>
@@ -283,7 +327,7 @@ export default function Dashboard() {
                           </CardTitle>
                           <CardDescription>
                             By {author?.name} •{" "}
-                            {new Date(note.createdAt).toLocaleDateString()}
+                            {new Date(note.created_at).toLocaleDateString()}
                           </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -296,7 +340,19 @@ export default function Dashboard() {
                   })}
                 </div>
               ) : (
-                <p className="text-muted-foreground">No pinned notes</p>
+                <EmptyState
+                  icon={FileText}
+                  title="No pinned notes"
+                  description="Pin important notes for quick access"
+                  action={
+                    <Button asChild>
+                      <Link href="/notes">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Note
+                      </Link>
+                    </Button>
+                  }
+                />
               )}
             </CardContent>
           </Card>
@@ -338,12 +394,35 @@ export default function Dashboard() {
                           </div>
                         </div>
                       </div>
-                      <Badge variant={getChoreVariant(chore.due_date)}>
-                        {getChoreStatus(chore.due_date)}
+                      <Badge
+                        variant={
+                          getChoreVariant(
+                            new Date(chore.due_date).toLocaleDateString(),
+                          ) as "default" | "destructive" | "outline" | "secondary"
+                        }
+                      >
+                        {getChoreStatus(
+                          new Date(chore.due_date).toLocaleDateString(),
+                        )}
                       </Badge>
                     </div>
                   );
                 })}
+                {chores.length === 0 && (
+                  <EmptyState
+                    icon={CheckCircle}
+                    title="No chores yet"
+                    description="Add your first chore to get started"
+                    action={
+                      <Button asChild>
+                        <Link href="/chores?action=new">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Chore
+                        </Link>
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -399,6 +478,21 @@ export default function Dashboard() {
                     </div>
                   );
                 })}
+                {expenses.length === 0 && (
+                  <EmptyState
+                    icon={DollarSign}
+                    title="No expenses yet"
+                    description="Add your first expense to start tracking"
+                    action={
+                      <Button asChild>
+                        <Link href="/expenses?action=new">
+                          <Plus className="mr-2 h-4 w-4" />
+                          Add Expense
+                        </Link>
+                      </Button>
+                    }
+                  />
+                )}
               </div>
             </CardContent>
           </Card>
@@ -414,34 +508,50 @@ export default function Dashboard() {
               </Button>
             </CardHeader>
             <CardContent>
-              <div className="grid gap-4 md:grid-cols-2">
-                {mockNotes.map((note) => {
-                  const author = mockUsers.find(
-                    (user) => user.id === note.createdBy,
-                  );
-                  return (
-                    <Card key={note.id}>
-                      <CardHeader className="pb-2">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className="text-md">
-                            {note.title}
-                          </CardTitle>
-                          {note.isPinned && (
-                            <Badge variant="outline">Pinned</Badge>
-                          )}
-                        </div>
-                        <CardDescription>
-                          By {author?.name} •{" "}
-                          {new Date(note.createdAt).toLocaleDateString()}
-                        </CardDescription>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm">{note.content}</p>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
+              {notes.length > 0 ? (
+                <div className="grid gap-4 md:grid-cols-2">
+                  {notes.map((note) => {
+                    const author = mockUsers.find(
+                      (user) => user.id === note.created_by,
+                    );
+                    return (
+                      <Card key={note.id}>
+                        <CardHeader className="pb-2">
+                          <div className="flex items-center justify-between">
+                            <CardTitle className="text-md">
+                              {note.title}
+                            </CardTitle>
+                            {note.is_pinned && (
+                              <Badge variant="outline">Pinned</Badge>
+                            )}
+                          </div>
+                          <CardDescription>
+                            By {author?.name} •{" "}
+                            {new Date(note.created_at).toLocaleDateString()}
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                          <p className="text-sm">{note.content}</p>
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
+                </div>
+              ) : (
+                <EmptyState
+                  icon={FileText}
+                  title="No notes yet"
+                  description="Add your first note to get started"
+                  action={
+                    <Button asChild>
+                      <Link href="/notes?action=new">
+                        <Plus className="mr-2 h-4 w-4" />
+                        Add Note
+                      </Link>
+                    </Button>
+                  }
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>

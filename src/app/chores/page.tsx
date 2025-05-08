@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -41,25 +41,101 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { mockChores, mockUsers } from "@/lib/mock-data";
+import { useSearchParams } from "next/navigation";
+import { useChoreStore } from "@/lib/stores/choresStore";
+import addNewChore, { updateChore } from "./actions";
+import { Chore } from "../../../types/database";
 
 export default function ChoresPage() {
-  const [chores, setChores] = useState(mockChores);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [date, setDate] = useState<Date>();
+  const searchParams = useSearchParams();
+  const {
+    chores: choresData,
+    members,
+    user,
+    fetchChoresData,
+  } = useChoreStore();
 
-  const toggleChoreCompletion = (id: string) => {
-    setChores(
-      chores.map((chore) =>
-        chore.id === id ? { ...chore, completed: !chore.completed } : chore,
-      ),
-    );
+  // Local state
+  const [chores, setChores] = useState(choresData);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [date, setDate] = useState<Date | undefined>(undefined);
+  const [assignedTo, setAssignedTo] = useState<string>("");
+
+  // Initial data fetch
+  useEffect(() => {
+    fetchChoresData();
+  }, [fetchChoresData]);
+
+  // Keep local chores state in sync with store data
+  useEffect(() => {
+    setChores(choresData);
+  }, [choresData]);
+
+  // Check for URL parameters
+  useEffect(() => {
+    const action = searchParams.get("action");
+    if (action === "new") {
+      setIsDialogOpen(true);
+    }
+  }, [searchParams]);
+
+  const toggleChoreCompletion = async (id: string, currentStatus: boolean) => {
+    try {
+      // Call the server action to update the chore
+      setChores((prevChores: Array<Chore>) =>
+        prevChores.map((chore: Chore) =>
+          chore.id === id ? { ...chore, completed: !currentStatus } : chore,
+        ),
+      );
+
+      const result = await updateChore(id, !currentStatus);
+
+      if (!result.success) {
+        console.error("Server update failed:", result.error);
+        // Revert the local state change
+        setChores((prevChores) =>
+          prevChores.map((chore) =>
+            chore.id === id ? { ...chore, completed: currentStatus } : chore,
+          ),
+        );
+        return;
+      }
+
+      // Fetch updated data from the server
+      await fetchChoresData();
+
+      // No need to manually update local state as it will be updated via the useEffect
+    } catch (error) {
+      console.error("Error toggling chore completion:", error);
+    }
   };
 
-  const addChore = (e: React.FormEvent) => {
+  const addChore = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // In a real app, we would add the chore to the database
+
+    // Get FormData from the form event
+    const formData = new FormData(e.currentTarget);
+
+    // Manually add assignedTo value to formData
+    formData.set("assigned_to", assignedTo);
+
+    // Call the server action with the FormData
+    await addNewChore(formData, user?.house_id);
+
+    // Fetch updated chores data from the server
+    await fetchChoresData();
+
+    // Reset form state
+    setDate(undefined);
+    setAssignedTo("");
+
+    // Close the dialog
     setIsDialogOpen(false);
+  };
+
+  const resetForm = () => {
+    setDate(undefined);
+    setAssignedTo("");
   };
 
   return (
@@ -71,7 +147,13 @@ export default function ChoresPage() {
             Manage and track household chores
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -91,19 +173,20 @@ export default function ChoresPage() {
                   <Label htmlFor="title">Title</Label>
                   <Input
                     id="title"
+                    name="title"
                     placeholder="e.g., Clean kitchen"
                     required
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="assigned-to">Assigned To</Label>
-                  <Select>
-                    <SelectTrigger>
+                  <Select value={assignedTo} onValueChange={setAssignedTo}>
+                    <SelectTrigger id="assigned-to">
                       <SelectValue placeholder="Select person" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
+                      {members.map((user) => (
+                        <SelectItem key={user.user_id} value={user.user_id}>
                           {user.name}
                         </SelectItem>
                       ))}
@@ -115,6 +198,7 @@ export default function ChoresPage() {
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
+                        type="button"
                         variant={"outline"}
                         className={cn(
                           "w-full justify-start text-left font-normal",
@@ -134,21 +218,11 @@ export default function ChoresPage() {
                       />
                     </PopoverContent>
                   </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="frequency">Frequency</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select frequency" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="once">Once</SelectItem>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="biweekly">Bi-weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <input
+                    type="hidden"
+                    name="due_date"
+                    value={date ? date.toISOString() : ""}
+                  />
                 </div>
               </div>
               <DialogFooter>
@@ -170,8 +244,8 @@ export default function ChoresPage() {
               {chores
                 .filter((chore) => !chore.completed)
                 .map((chore) => {
-                  const assignedTo = mockUsers.find(
-                    (user) => user.id === chore.assignedTo,
+                  const assignedTo = members.find(
+                    (user) => user.user_id === chore.assigned_to,
                   );
                   return (
                     <div
@@ -182,19 +256,13 @@ export default function ChoresPage() {
                         <Checkbox
                           checked={chore.completed}
                           onCheckedChange={() =>
-                            toggleChoreCompletion(chore.id)
+                            toggleChoreCompletion(chore.id, chore.completed)
                           }
                         />
                         <div>
                           <p className="font-medium">{chore.title}</p>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Avatar className="h-6 w-6">
-                              <AvatarImage
-                                src={
-                                  assignedTo?.avatarUrl || "/placeholder.svg"
-                                }
-                                alt={assignedTo?.name}
-                              />
                               <AvatarFallback>
                                 {assignedTo?.name.charAt(0)}
                               </AvatarFallback>
@@ -202,15 +270,26 @@ export default function ChoresPage() {
                             <span>{assignedTo?.name}</span>
                             <span>•</span>
                             <span>
-                              Due {new Date(chore.dueDate).toLocaleDateString()}
+                              Due{" "}
+                              {new Date(chore.due_date).toLocaleDateString()}
                             </span>
-                            <span>•</span>
-                            <span>{chore.frequency}</span>
                           </div>
                         </div>
                       </div>
-                      <Badge variant={getChoreVariant(chore.dueDate)}>
-                        {getChoreStatus(chore.dueDate)}
+                      <Badge
+                        variant={
+                          getChoreVariant(
+                            new Date(chore.due_date).toLocaleDateString(),
+                          ) as
+                            | "destructive"
+                            | "outline"
+                            | "default"
+                            | "secondary"
+                        }
+                      >
+                        {getChoreStatus(
+                          new Date(chore.due_date).toLocaleDateString(),
+                        )}
                       </Badge>
                     </div>
                   );
@@ -235,8 +314,8 @@ export default function ChoresPage() {
               {chores
                 .filter((chore) => chore.completed)
                 .map((chore) => {
-                  const assignedTo = mockUsers.find(
-                    (user) => user.id === chore.assignedTo,
+                  const assignedTo = members.find(
+                    (user) => user.user_id === chore.assigned_to,
                   );
                   return (
                     <div
@@ -247,7 +326,7 @@ export default function ChoresPage() {
                         <Checkbox
                           checked={chore.completed}
                           onCheckedChange={() =>
-                            toggleChoreCompletion(chore.id)
+                            toggleChoreCompletion(chore.id, chore.completed)
                           }
                         />
                         <div>
@@ -256,12 +335,6 @@ export default function ChoresPage() {
                           </p>
                           <div className="flex items-center gap-2 text-sm text-muted-foreground">
                             <Avatar className="h-6 w-6">
-                              <AvatarImage
-                                src={
-                                  assignedTo?.avatarUrl || "/placeholder.svg"
-                                }
-                                alt={assignedTo?.name}
-                              />
                               <AvatarFallback>
                                 {assignedTo?.name.charAt(0)}
                               </AvatarFallback>

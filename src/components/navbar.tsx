@@ -18,6 +18,7 @@ import {
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDashboardStore } from "@/lib/stores/dashboardStore";
+import { useChoreStore } from "@/lib/stores/choresStore";
 import { useEffect } from "react";
 
 export default function Navbar() {
@@ -25,9 +26,11 @@ export default function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const { fetchDashboardData, user } = useDashboardStore();
+  const { fetchChoresData } = useChoreStore();
 
   useEffect(() => {
     fetchDashboardData();
+    fetchChoresData();
   }, []);
 
   const routes = [
@@ -95,10 +98,6 @@ export default function Navbar() {
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2">
               <Avatar className="h-8 w-8">
-                <AvatarImage
-                  src={"/placeholder.svg"}
-                  alt={user?.display_name}
-                />
                 <AvatarFallback>{user?.display_name.charAt(0)}</AvatarFallback>
               </Avatar>
               <span className="text-sm font-medium">{user?.display_name}</span>
