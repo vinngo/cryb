@@ -397,7 +397,7 @@ export default function Dashboard() {
                   description="Pin important notes for quick access"
                   action={
                     <Button asChild>
-                      <Link href="/notes">
+                      <Link href="/notes?action=new">
                         <Plus className="mr-2 h-4 w-4" />
                         Add Note
                       </Link>

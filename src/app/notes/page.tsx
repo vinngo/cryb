@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -26,33 +26,91 @@ import { Textarea } from "@/components/ui/textarea";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PinIcon, Plus, Trash2 } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
-import { mockNotes, mockUsers } from "@/lib/mock-data";
+import { useNotesStore } from "@/lib/stores/notesStore";
+import { addNewNote, togglePinned, deleteNoteAction } from "./actions";
+import { useSearchParams } from "next/navigation";
 
 export default function NotesPage() {
-  const [notes, setNotes] = useState(mockNotes);
+  const {
+    notes: notesData,
+    user,
+    members,
+    loading,
+    fetchNotesData,
+  } = useNotesStore();
+  const [notes, setNotes] = useState(notesData);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
 
-  // Get current user (in a real app, this would come from auth)
-  const currentUser = mockUsers[0];
+  const searchParams = useSearchParams();
+  const action = searchParams.get("action");
 
-  const addNote = (e: React.FormEvent) => {
+  // Get current user (in a real app, this would come from auth)
+  const currentUser = user;
+
+  useEffect(() => {
+    setNotes(notesData);
+  }, [notesData]);
+
+  useEffect(() => {
+    if (action === "new") {
+      setIsDialogOpen(true);
+    }
+  }, [action]);
+
+  const addNote = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     // In a real app, we would add the note to the database
+    const formData = new FormData(e.target as HTMLFormElement);
+    formData.set("is_pinned", isPinned ? "true" : "false");
+
+    const result = await addNewNote(
+      formData,
+      currentUser?.house_id,
+      currentUser?.id,
+    );
+
+    console.log(result);
+
+    if (!result?.success) {
+      throw new Error(result?.error || "Failed to add note");
+    }
+
+    await fetchNotesData();
+
     setIsDialogOpen(false);
     setIsPinned(false);
   };
 
-  const togglePin = (id: string) => {
+  const togglePin = async (id: string) => {
     setNotes(
       notes.map((note) =>
-        note.id === id ? { ...note, isPinned: !note.isPinned } : note,
+        note.id === id ? { ...note, is_pinned: !note.is_pinned } : note,
       ),
     );
+
+    const pinned_status = notes.filter((note) => note.id === id)[0].is_pinned;
+
+    const { success } = await togglePinned(id, pinned_status);
+
+    if (!success) {
+      //revert anticipated change
+      setNotes(
+        notes.map((note) =>
+          note.id === id ? { ...note, is_pinned: !note.is_pinned } : note,
+        ),
+      );
+    }
+    await fetchNotesData();
   };
 
-  const deleteNote = (id: string) => {
+  const deleteNote = async (id: string) => {
     setNotes(notes.filter((note) => note.id !== id));
+    const { success } = await deleteNoteAction(id);
+
+    if (!success) {
+      setNotes(notes.filter((note) => note.id !== id));
+    }
   };
 
   return (
@@ -86,6 +144,7 @@ export default function NotesPage() {
                   <Label htmlFor="title">Title</Label>
                   <Input
                     id="title"
+                    name="title"
                     placeholder="e.g., House Meeting"
                     required
                   />
@@ -94,6 +153,7 @@ export default function NotesPage() {
                   <Label htmlFor="content">Content</Label>
                   <Textarea
                     id="content"
+                    name="content"
                     placeholder="Write your note here..."
                     className="min-h-[120px]"
                     required
@@ -116,15 +176,15 @@ export default function NotesPage() {
         </Dialog>
       </div>
 
-      {notes.some((note) => note.isPinned) && (
+      {notes.some((note) => note.is_pinned) && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Pinned Notes</h2>
           <div className="grid gap-4 md:grid-cols-2">
             {notes
-              .filter((note) => note.isPinned)
+              .filter((note) => note.is_pinned)
               .map((note) => {
-                const author = mockUsers.find(
-                  (user) => user.id === note.createdBy,
+                const author = members.find(
+                  (user) => user.user_id === note.created_by,
                 );
                 return (
                   <Card key={note.id}>
@@ -154,17 +214,13 @@ export default function NotesPage() {
                       </div>
                       <CardDescription className="flex items-center gap-2">
                         <Avatar className="h-6 w-6">
-                          <AvatarImage
-                            src={author?.avatarUrl || "/placeholder.svg"}
-                            alt={author?.name}
-                          />
                           <AvatarFallback>
                             {author?.name.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
                         <span>
                           By {author?.name} •{" "}
-                          {new Date(note.createdAt).toLocaleDateString()}
+                          {new Date(note.created_at).toLocaleDateString()}
                         </span>
                       </CardDescription>
                     </CardHeader>
@@ -182,10 +238,10 @@ export default function NotesPage() {
         <h2 className="text-xl font-semibold mb-4">All Notes</h2>
         <div className="grid gap-4 md:grid-cols-2">
           {notes
-            .filter((note) => !note.isPinned)
+            .filter((note) => !note.is_pinned)
             .map((note) => {
-              const author = mockUsers.find(
-                (user) => user.id === note.createdBy,
+              const author = members.find(
+                (user) => user.user_id === note.created_by,
               );
               return (
                 <Card key={note.id}>
@@ -225,7 +281,7 @@ export default function NotesPage() {
                       </Avatar>
                       <span>
                         By {author?.name} •{" "}
-                        {new Date(note.createdAt).toLocaleDateString()}
+                        {new Date(note.created_at).toLocaleDateString()}
                       </span>
                     </CardDescription>
                   </CardHeader>
@@ -236,7 +292,7 @@ export default function NotesPage() {
               );
             })}
 
-          {notes.filter((note) => !note.isPinned).length === 0 && (
+          {notes.filter((note) => !note.is_pinned).length === 0 && (
             <p className="text-muted-foreground col-span-2 text-center py-8">
               No notes yet. Create one to get started!
             </p>

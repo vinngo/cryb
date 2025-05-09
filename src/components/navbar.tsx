@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDashboardStore } from "@/lib/stores/dashboardStore";
 import { useChoreStore } from "@/lib/stores/choresStore";
 import { useExpenseStore } from "@/lib/stores/expensesStore";
+import { useNotesStore } from "@/lib/stores/notesStore";
 import { useEffect } from "react";
 
 export default function Navbar() {
@@ -29,11 +30,13 @@ export default function Navbar() {
   const { fetchDashboardData, user } = useDashboardStore();
   const { fetchChoresData } = useChoreStore();
   const { fetchExpensesData } = useExpenseStore();
+  const { fetchNotesData } = useNotesStore();
 
   useEffect(() => {
     fetchDashboardData();
     fetchChoresData();
     fetchExpensesData();
+    fetchNotesData();
   }, []);
 
   const routes = [
