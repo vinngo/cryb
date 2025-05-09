@@ -13,25 +13,19 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import {
-  CalendarDays,
-  CheckCircle,
-  DollarSign,
-  Home,
-  Plus,
-  FileText,
-} from "lucide-react";
+import { CheckCircle, DollarSign, Home, Plus, FileText } from "lucide-react";
 import Link from "next/link";
-import { mockUsers } from "@/lib/mock-data";
+
 import { useDashboardStore } from "@/lib/stores/dashboardStore";
 import { EmptyState } from "@/components/empty-state";
+import { useMemo } from "react";
 
 export default function Dashboard() {
-  //replace this later with a call to the store
-  const { user, house, members, chores, expenses, notes } = useDashboardStore();
+  const { user, house, members, chores, expenses, contributions, notes } =
+    useDashboardStore();
 
-  // Get current user (in a real app, this would come from auth)
-  const currentUser = mockUsers[0];
+  // Get current user
+  const currentUser = user;
 
   // Get upcoming chores (filter for demo)
   const upcomingChores = chores.filter((chore) => !chore.completed).slice(0, 3);
@@ -42,33 +36,71 @@ export default function Dashboard() {
   // Get pinned notes
   const pinnedNotes = notes.filter((note) => note.is_pinned).slice(0, 2);
 
-  // Calculate balances
-  const totalOwed = expenses
-    .filter(
-      (expense) =>
-        expense.split_between.includes(currentUser.id) &&
-        expense.paid_by !== currentUser.id,
-    )
-    .reduce((sum, expense) => {
-      // Simple split calculation for demo
-      const splitAmount = expense.amount / (expense.split_between.length + 1);
-      return sum + splitAmount;
-    }, 0);
+  // Enhanced balance calculations with contributions
+  const { totalOwed, totalOwing, netBalance } = useMemo(() => {
+    if (!currentUser) {
+      return { totalOwed: 0, totalOwing: 0, netBalance: 0 };
+    }
 
-  const totalOwing = expenses
-    .filter(
-      (expense) =>
-        expense.paid_by === currentUser.id && expense.split_between.length > 0,
-    )
-    .reduce((sum, expense) => {
-      // Simple split calculation for demo
-      const splitAmount =
-        (expense.amount / (expense.split_between.length + 1)) *
-        expense.split_between.length;
-      return sum + splitAmount;
-    }, 0);
+    // What the current user owes to others
+    let owed = 0;
+    // What others owe to the current user
+    let owing = 0;
 
-  const netBalance = totalOwing - totalOwed;
+    // Calculate what the user owes to others
+    expenses.forEach((expense) => {
+      // Skip if the user paid for this expense
+      if (expense.paid_by === currentUser.id) {
+        return;
+      }
+
+      // Skip if the user is not involved in this expense
+      if (!expense.split_between.includes(currentUser.id)) {
+        return;
+      }
+
+      // Calculate the user's share
+      const totalPeople = expense.split_between.length + 1; // +1 for the person who paid
+      const share = expense.amount / totalPeople;
+
+      // Subtract any contributions the user has already made
+      const userContributions = contributions
+        .filter(
+          (c) => c.expense_id === expense.id && c.user_id === currentUser.id,
+        )
+        .reduce((sum, c) => sum + c.amount, 0);
+
+      owed += Math.max(0, share - userContributions);
+    });
+
+    // Calculate what others owe to the user
+    expenses.forEach((expense) => {
+      // Skip if the user didn't pay for this expense
+      if (expense.paid_by !== currentUser.id) {
+        return;
+      }
+
+      // Calculate how much others owe to this user
+      expense.split_between.forEach((sharedUserId) => {
+        const splitAmount = expense.amount / (expense.split_between.length + 1);
+
+        // Subtract any contributions the shared user has already made
+        const sharedUserContributions = contributions
+          .filter(
+            (c) => c.expense_id === expense.id && c.user_id === sharedUserId,
+          )
+          .reduce((sum, c) => sum + c.amount, 0);
+
+        owing += Math.max(0, splitAmount - sharedUserContributions);
+      });
+    });
+
+    return {
+      totalOwed: owed,
+      totalOwing: owing,
+      netBalance: owing - owed,
+    };
+  }, [currentUser, expenses, contributions]);
 
   return (
     <div className="space-y-6">
@@ -76,7 +108,7 @@ export default function Dashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user?.display_name || currentUser.name}! Here&apos;s
+            Welcome back, {user?.display_name || "Guest"}! Here&apos;s
             what&apos;s happening in your house.
           </p>
         </div>
@@ -91,7 +123,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
@@ -116,7 +148,39 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Your Balance</CardTitle>
+            <CardTitle className="text-sm font-medium">You Owe</CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-500">
+              ${totalOwed.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {totalOwed > 0 ? "Outstanding payments" : "All paid up!"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              You&apos;re Owed
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-500">
+              ${totalOwing.toFixed(2)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              Outstanding receivables
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Net Balance</CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -126,7 +190,7 @@ export default function Dashboard() {
               ${Math.abs(netBalance).toFixed(2)}
             </div>
             <p className="text-xs text-muted-foreground mt-1">
-              {netBalance >= 0 ? "You're owed" : "You owe"}
+              {netBalance >= 0 ? "You're owed money" : "You owe money"}
             </p>
           </CardContent>
         </Card>
@@ -141,26 +205,13 @@ export default function Dashboard() {
             <div className="flex -space-x-2 mt-2">
               {members.map((user) => (
                 <Avatar
-                  key={user.id}
+                  key={user.user_id}
                   className="h-8 w-8 border-2 border-background"
                 >
                   <AvatarFallback>{user.name?.charAt(0)}</AvatarFallback>
                 </Avatar>
               ))}
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              Upcoming Events
-            </CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">2</div>
-            <p className="text-xs text-muted-foreground mt-1">This week</p>
           </CardContent>
         </Card>
       </div>
@@ -259,8 +310,8 @@ export default function Dashboard() {
                 {recentExpenses.length > 0 ? (
                   <div className="space-y-4">
                     {recentExpenses.map((expense) => {
-                      const paidBy = mockUsers.find(
-                        (user) => user.id === expense.paid_by,
+                      const paidBy = members.find(
+                        (user) => user.user_id === expense.paid_by,
                       );
                       return (
                         <div
@@ -316,8 +367,8 @@ export default function Dashboard() {
               {pinnedNotes.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   {pinnedNotes.map((note) => {
-                    const author = mockUsers.find(
-                      (user) => user.id === note.created_by,
+                    const author = members.find(
+                      (user) => user.user_id === note.created_by,
                     );
                     return (
                       <Card key={note.id}>
@@ -370,8 +421,8 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {chores.map((chore) => {
-                  const assignedTo = mockUsers.find(
-                    (user) => user.id === chore.assigned_to,
+                  const assignedTo = members.find(
+                    (user) => user.user_id === chore.assigned_to,
                   );
                   return (
                     <div
@@ -398,7 +449,11 @@ export default function Dashboard() {
                         variant={
                           getChoreVariant(
                             new Date(chore.due_date).toLocaleDateString(),
-                          ) as "default" | "destructive" | "outline" | "secondary"
+                          ) as
+                            | "default"
+                            | "destructive"
+                            | "outline"
+                            | "secondary"
                         }
                       >
                         {getChoreStatus(
@@ -440,11 +495,13 @@ export default function Dashboard() {
             <CardContent>
               <div className="space-y-4">
                 {expenses.map((expense) => {
-                  const paidBy = mockUsers.find(
-                    (user) => user.id === expense.paid_by,
+                  const paidBy = members.find(
+                    (user) => user.user_id === expense.paid_by,
                   );
                   const sharedWith = expense.split_between
-                    .map((id) => mockUsers.find((user) => user.id === id)?.name)
+                    .map(
+                      (id) => members.find((user) => user.user_id === id)?.name,
+                    )
                     .join(", ");
 
                   return (
@@ -511,8 +568,8 @@ export default function Dashboard() {
               {notes.length > 0 ? (
                 <div className="grid gap-4 md:grid-cols-2">
                   {notes.map((note) => {
-                    const author = mockUsers.find(
-                      (user) => user.id === note.created_by,
+                    const author = members.find(
+                      (user) => user.user_id === note.created_by,
                     );
                     return (
                       <Card key={note.id}>

@@ -19,6 +19,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useDashboardStore } from "@/lib/stores/dashboardStore";
 import { useChoreStore } from "@/lib/stores/choresStore";
+import { useExpenseStore } from "@/lib/stores/expensesStore";
 import { useEffect } from "react";
 
 export default function Navbar() {
@@ -27,10 +28,12 @@ export default function Navbar() {
 
   const { fetchDashboardData, user } = useDashboardStore();
   const { fetchChoresData } = useChoreStore();
+  const { fetchExpensesData } = useExpenseStore();
 
   useEffect(() => {
     fetchDashboardData();
     fetchChoresData();
+    fetchExpensesData();
   }, []);
 
   const routes = [

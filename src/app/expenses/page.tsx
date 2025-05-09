@@ -2,7 +2,8 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -11,7 +12,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -30,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, DollarSign, Plus } from "lucide-react";
+import { CalendarIcon, DollarSign, Plus, CreditCard } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -40,51 +41,216 @@ import {
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Checkbox } from "@/components/ui/checkbox";
-import { mockExpenses, mockUsers } from "@/lib/mock-data";
+import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
+import { EmptyState } from "@/components/empty-state";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { useExpenseStore } from "@/lib/stores/expensesStore";
+import { Contribution, Expense } from "../../../types/database";
+import { addNewExpense, addNewContribution } from "./actions";
 
 export default function ExpensesPage() {
-  const [expenses, setExpenses] = useState(mockExpenses);
+  const searchParams = useSearchParams();
+
+  const {
+    expenses: expensesData,
+    members,
+    user,
+    contributions: contributionsData,
+    fetchExpensesData,
+  } = useExpenseStore();
+
+  const [expenses, setExpenses] = useState(expensesData);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isContributeDialogOpen, setIsContributeDialogOpen] = useState(false);
   const [date, setDate] = useState<Date>();
+  const [contributionDate, setContributionDate] = useState<Date>(new Date());
   const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedExpense, setSelectedExpense] = useState<Expense | null>(null);
+  const [contributionAmount, setContributionAmount] = useState("");
+  const [contributionNote, setContributionNote] = useState("");
+  const [paidBy, setPaidBy] = useState<string>("");
+
+  // Add state for contributions
+  const [contributions, setContributions] =
+    useState<Contribution[]>(contributionsData);
 
   // Get current user (in a real app, this would come from auth)
-  const currentUser = mockUsers[0];
+  const currentUser = user;
+
+  useEffect(() => {
+    // Check if there's an action parameter in the URL
+    const action = searchParams.get("action");
+    if (action === "new") {
+      setIsDialogOpen(true);
+    }
+  }, [searchParams]);
+
+  useEffect(() => {
+    setExpenses(expensesData);
+  }, [expensesData]);
+
+  useEffect(() => {
+    setContributions(contributionsData);
+  }, [contributionsData]);
+
+  // Calculate what the current user owes for a specific expense
+  const calculateUserOwes = (expense: Expense) => {
+    if (!currentUser) {
+      return 0; // User is not logged in
+    }
+
+    if (expense.paid_by === currentUser.id) {
+      return 0; // User paid for this expense
+    }
+
+    if (!expense.split_between.includes(currentUser.id)) {
+      return 0; // User is not involved in this expense
+    }
+
+    // Calculate the user's share
+    const totalPeople = expense.split_between.length + 1; // +1 for the person who paid
+    const share = expense.amount / totalPeople;
+
+    // Subtract any contributions the user has already made
+    const userContributions = contributions
+      .filter(
+        (c) => c.expense_id === expense.id && c.user_id === currentUser.id,
+      )
+      .reduce((sum, c) => sum + c.amount, 0);
+
+    return Math.max(0, share - userContributions);
+  };
 
   // Calculate balances
-  const balances = mockUsers.map((user) => {
-    let balance = 0;
+  const balances = useMemo(() => {
+    const calculatedBalances = members.map((member) => {
+      let balance = 0;
 
-    // Calculate what this user owes to others
-    expenses.forEach((expense) => {
-      if (expense.sharedWith.includes(user.id) && expense.paidBy !== user.id) {
-        // Simple split calculation for demo
-        const splitAmount = expense.amount / (expense.sharedWith.length + 1);
-        balance -= splitAmount;
-      }
+      // Calculate what this user owes to others
+      expenses.forEach((expense) => {
+        if (
+          expense.split_between.includes(member.user_id) &&
+          expense.paid_by !== member.user_id
+        ) {
+          // Simple split calculation for demo
+          const splitAmount =
+            expense.amount / (expense.split_between.length + 1);
+
+          // Subtract any contributions the user has already made
+          const userContributions = contributions
+            .filter(
+              (c) =>
+                c.expense_id === expense.id && c.user_id === member.user_id,
+            )
+            .reduce((sum, c) => sum + c.amount, 0);
+
+          balance -= Math.max(0, splitAmount - userContributions);
+        }
+      });
+
+      // Calculate what others owe to this user
+      expenses.forEach((expense) => {
+        if (
+          expense.paid_by === member.user_id &&
+          expense.split_between.length > 0
+        ) {
+          // Calculate how much others owe to this user
+          expense.split_between.forEach((sharedUserId) => {
+            const splitAmount =
+              expense.amount / (expense.split_between.length + 1);
+
+            // Subtract any contributions the shared user has already made
+            const sharedUserContributions = contributions
+              .filter(
+                (c) =>
+                  c.expense_id === expense.id && c.user_id === sharedUserId,
+              )
+              .reduce((sum, c) => sum + c.amount, 0);
+
+            balance += Math.max(0, splitAmount - sharedUserContributions);
+          });
+        }
+      });
+
+      return {
+        user: member,
+        balance,
+      };
     });
 
-    // Calculate what others owe to this user
-    expenses.forEach((expense) => {
-      if (expense.paidBy === user.id && expense.sharedWith.length > 0) {
-        // Simple split calculation for demo
-        const splitAmount =
-          (expense.amount / (expense.sharedWith.length + 1)) *
-          expense.sharedWith.length;
-        balance += splitAmount;
-      }
-    });
+    return calculatedBalances;
+  }, [expenses, members, contributions]);
 
-    return {
-      user,
-      balance,
-    };
-  });
-
-  const addExpense = (e: React.FormEvent) => {
+  const addExpense = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    // In a real app, we would add the expense to the database
+
+    if (!user?.house_id) {
+      console.error("User is not part of a house");
+      return;
+    }
+
+    const formData = new FormData(e.currentTarget);
+
+    formData.set("paid_by", paidBy);
+    formData.set("split_between", JSON.stringify(selectedUsers));
+
+    //call server action using formData...
+
+    const result = await addNewExpense(formData, user?.house_id);
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to add expense");
+    }
+
+    await fetchExpensesData();
+
+    setDate(undefined);
+    setPaidBy("");
+    setSelectedUsers([]);
+
     setIsDialogOpen(false);
+  };
+
+  const resetForm = () => {
+    setDate(undefined);
+    setPaidBy("");
+  };
+
+  const handleContribute = (expense: Expense) => {
+    setSelectedExpense(expense);
+    setContributionAmount("");
+    setContributionNote("");
+    setContributionDate(new Date());
+    setIsContributeDialogOpen(true);
+  };
+
+  const submitContribution = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    if (!selectedExpense || !contributionAmount) return;
+
+    if (!currentUser) return;
+
+    const formData = new FormData(e.currentTarget);
+
+    formData.set("paid_by", currentUser.id);
+
+    const result = await addNewContribution(formData, selectedExpense.id);
+
+    if (!result.success) {
+      throw new Error(result.error || "Failed to add contribution!");
+    }
+
+    await fetchExpensesData();
+
+    // Close the dialog
+    setIsContributeDialogOpen(false);
   };
 
   const toggleUserSelection = (userId: string) => {
@@ -93,6 +259,29 @@ export default function ExpensesPage() {
     } else {
       setSelectedUsers([...selectedUsers, userId]);
     }
+  };
+
+  // Check if the current user is involved in an expense
+  const isUserInvolved = (expense: Expense) => {
+    if (!currentUser) return false;
+
+    return (
+      expense.paid_by === currentUser.id ||
+      expense.split_between.includes(currentUser.id)
+    );
+  };
+
+  // Get the total contributions for an expense
+  const getExpenseContributions = (expenseId: string) => {
+    return contributions
+      .filter((c) => c.expense_id === expenseId)
+      .reduce((sum, c) => sum + c.amount, 0);
+  };
+
+  // Get the remaining amount for an expense after contributions
+  const getRemainingAmount = (expense: Expense) => {
+    const totalContributions = getExpenseContributions(expense.id);
+    return Math.max(0, expense.amount - totalContributions);
   };
 
   return (
@@ -104,7 +293,13 @@ export default function ExpensesPage() {
             Track and split household expenses
           </p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog
+          open={isDialogOpen}
+          onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) resetForm();
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Plus className="mr-2 h-4 w-4" />
@@ -122,13 +317,19 @@ export default function ExpensesPage() {
               <div className="grid gap-4 py-4">
                 <div className="space-y-2">
                   <Label htmlFor="title">Title</Label>
-                  <Input id="title" placeholder="e.g., Groceries" required />
+                  <Input
+                    id="title"
+                    name="title"
+                    placeholder="e.g., Groceries"
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="amount">Amount ($)</Label>
                   <Input
                     id="amount"
                     type="number"
+                    name="amount"
                     step="0.01"
                     min="0.01"
                     placeholder="0.00"
@@ -137,13 +338,17 @@ export default function ExpensesPage() {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="paid-by">Paid By</Label>
-                  <Select defaultValue={currentUser.id}>
+                  <Select
+                    value={paidBy}
+                    defaultValue={currentUser?.id}
+                    onValueChange={setPaidBy}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select person" />
                     </SelectTrigger>
                     <SelectContent>
-                      {mockUsers.map((user) => (
-                        <SelectItem key={user.id} value={user.id}>
+                      {members.map((user) => (
+                        <SelectItem key={user.user_id} value={user.user_id}>
                           {user.name}
                         </SelectItem>
                       ))}
@@ -174,31 +379,34 @@ export default function ExpensesPage() {
                       />
                     </PopoverContent>
                   </Popover>
+                  <input
+                    type="hidden"
+                    name="date"
+                    value={date ? date.toISOString() : ""}
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Split With</Label>
                   <div className="border rounded-md p-4 space-y-2">
-                    {mockUsers
-                      .filter((user) => user.id !== currentUser.id)
+                    {members
+                      .filter((user) => user.user_id !== currentUser?.id)
                       .map((user) => (
                         <div
-                          key={user.id}
+                          key={user.user_id}
                           className="flex items-center space-x-2"
                         >
                           <Checkbox
-                            id={`user-${user.id}`}
-                            checked={selectedUsers.includes(user.id)}
-                            onCheckedChange={() => toggleUserSelection(user.id)}
+                            id={`user-${user.user_id}`}
+                            checked={selectedUsers.includes(user.user_id)}
+                            onCheckedChange={() =>
+                              toggleUserSelection(user.user_id)
+                            }
                           />
                           <Label
-                            htmlFor={`user-${user.id}`}
+                            htmlFor={`user-${user.user_id}`}
                             className="flex items-center gap-2 cursor-pointer"
                           >
                             <Avatar className="h-6 w-6">
-                              <AvatarImage
-                                src={user.avatarUrl || "/placeholder.svg"}
-                                alt={user.name}
-                              />
                               <AvatarFallback>
                                 {user.name.charAt(0)}
                               </AvatarFallback>
@@ -212,6 +420,95 @@ export default function ExpensesPage() {
               </div>
               <DialogFooter>
                 <Button type="submit">Add Expense</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Contribute Dialog */}
+        <Dialog
+          open={isContributeDialogOpen}
+          onOpenChange={setIsContributeDialogOpen}
+        >
+          <DialogContent>
+            <form onSubmit={submitContribution}>
+              <DialogHeader>
+                <DialogTitle>Make a Contribution</DialogTitle>
+                <DialogDescription>
+                  Record your payment towards {selectedExpense?.title}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="contribution-amount">Amount ($)</Label>
+                  <Input
+                    id="contribution-amount"
+                    type="number"
+                    name="amount"
+                    step="0.01"
+                    min="0.01"
+                    max={
+                      selectedExpense
+                        ? calculateUserOwes(selectedExpense).toString()
+                        : "0"
+                    }
+                    placeholder="0.00"
+                    value={contributionAmount}
+                    onChange={(e) => setContributionAmount(e.target.value)}
+                    required
+                  />
+                  {selectedExpense && (
+                    <p className="text-xs text-muted-foreground">
+                      You owe ${calculateUserOwes(selectedExpense).toFixed(2)}{" "}
+                      for this expense
+                    </p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className="w-full justify-start text-left font-normal"
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {contributionDate
+                          ? format(contributionDate, "PPP")
+                          : "Select date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={contributionDate}
+                        onSelect={(date) => date && setContributionDate(date)}
+                        initialFocus
+                        required
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <input
+                    type="hidden"
+                    name="date"
+                    value={
+                      contributionDate ? contributionDate.toISOString() : ""
+                    }
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="contribution-note">Note (optional)</Label>
+                  <Textarea
+                    id="contribution-note"
+                    placeholder="e.g., Venmo payment"
+                    name="note"
+                    value={contributionNote}
+                    onChange={(e) => setContributionNote(e.target.value)}
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="submit">Record Contribution</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -233,10 +530,6 @@ export default function ExpensesPage() {
                 >
                   <div className="flex items-center gap-2">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage
-                        src={user.avatarUrl || "/placeholder.svg"}
-                        alt={user.name}
-                      />
                       <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{user.name}</span>
@@ -277,7 +570,7 @@ export default function ExpensesPage() {
                 <span className="font-medium">
                   $
                   {expenses
-                    .filter((expense) => expense.paidBy === currentUser.id)
+                    .filter((expense) => expense.paid_by === currentUser?.id)
                     .reduce((sum, expense) => sum + expense.amount, 0)
                     .toFixed(2)}
                 </span>
@@ -289,28 +582,40 @@ export default function ExpensesPage() {
                   {expenses
                     .filter(
                       (expense) =>
-                        expense.paidBy === currentUser.id ||
-                        expense.sharedWith.includes(currentUser.id),
+                        expense.paid_by === currentUser?.id ||
+                        expense.split_between.includes(currentUser?.id),
                     )
                     .reduce((sum, expense) => {
-                      const totalPeople = expense.sharedWith.length + 1;
+                      const totalPeople = expense.split_between.length + 1;
                       const share = expense.amount / totalPeople;
                       return sum + share;
                     }, 0)
                     .toFixed(2)}
                 </span>
               </div>
+              <div className="flex justify-between items-center pb-2 border-b">
+                <span className="text-muted-foreground">
+                  Your Contributions
+                </span>
+                <span className="font-medium">
+                  $
+                  {contributions
+                    .filter((c) => c.user_id === currentUser?.id)
+                    .reduce((sum, c) => sum + c.amount, 0)
+                    .toFixed(2)}
+                </span>
+              </div>
               <div className="flex justify-between items-center pt-2">
                 <span className="font-medium">Net Balance</span>
                 <span
-                  className={`font-bold ${balances.find((b) => b.user.id === currentUser.id)?.balance! > 0 ? "text-green-500" : "text-red-500"}`}
+                  className={`font-bold ${balances.find((b) => b.user.user_id === currentUser.id)?.balance! >= 0 ? "text-green-500" : "text-red-500"}`}
                 >
                   $
                   {Math.abs(
-                    balances.find((b) => b.user.id === currentUser.id)
+                    balances.find((b) => b.user.user_id === currentUser?.id)
                       ?.balance || 0,
                   ).toFixed(2)}
-                  {balances.find((b) => b.user.id === currentUser.id)
+                  {balances.find((b) => b.user.user_id === currentUser?.id)
                     ?.balance! >= 0
                     ? " (you are owed)"
                     : " (you owe)"}
@@ -327,52 +632,176 @@ export default function ExpensesPage() {
           <CardDescription>All household expenses</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {expenses.map((expense) => {
-              const paidBy = mockUsers.find(
-                (user) => user.id === expense.paidBy,
-              );
-              const sharedWith = expense.sharedWith
-                .map((id) => mockUsers.find((user) => user.id === id)?.name)
-                .join(", ");
+          {expenses.length > 0 ? (
+            <div className="space-y-4">
+              {expenses.map((expense) => {
+                const paidBy = members.find(
+                  (user) => user.user_id === expense.paid_by,
+                );
+                const sharedWith = expense.split_between
+                  .map(
+                    (id) => members.find((user) => user.user_id === id)?.name,
+                  )
+                  .join(", ");
 
-              return (
-                <div
-                  key={expense.id}
-                  className="flex items-center justify-between border-b pb-4"
-                >
-                  <div className="flex items-center gap-4">
-                    <DollarSign className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <p className="font-medium">{expense.title}</p>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Avatar className="h-6 w-6">
-                          <AvatarImage
-                            src={paidBy?.avatarUrl || "/placeholder.svg"}
-                            alt={paidBy?.name}
-                          />
-                          <AvatarFallback>
-                            {paidBy?.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <span>Paid by {paidBy?.name}</span>
-                        <span>•</span>
-                        <span>
-                          {new Date(expense.date).toLocaleDateString()}
-                        </span>
+                const userOwes = calculateUserOwes(expense);
+                const totalContributions = getExpenseContributions(expense.id);
+                const remainingAmount = getRemainingAmount(expense);
+                const userContributions = contributions
+                  .filter(
+                    (c) =>
+                      c.expense_id === expense.id &&
+                      c.user_id === currentUser?.id,
+                  )
+                  .reduce((sum, c) => sum + c.amount, 0);
+
+                const isInvolved = isUserInvolved(expense);
+                const canContribute = isInvolved && userOwes > 0;
+
+                return (
+                  <div
+                    key={expense.id}
+                    className="flex flex-col border rounded-lg p-4"
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-4">
+                        <DollarSign className="h-5 w-5 text-muted-foreground" />
+                        <div>
+                          <p className="font-medium">{expense.title}</p>
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback>
+                                {paidBy?.name.charAt(0)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span>Paid by {paidBy?.name}</span>
+                          </div>
+                          {sharedWith && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Shared with: {sharedWith}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {sharedWith && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Shared with: {sharedWith}
+                      <div className="text-right">
+                        <p className="font-medium">
+                          ${expense.amount.toFixed(2)}
                         </p>
-                      )}
+                        {totalContributions > 0 && (
+                          <p className="text-xs text-muted-foreground">
+                            ${remainingAmount.toFixed(2)} remaining
+                          </p>
+                        )}
+                      </div>
                     </div>
+
+                    {isInvolved && (
+                      <div className="mt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 border-t">
+                        <div>
+                          {expense.paid_by === currentUser?.id ? (
+                            <Badge variant="outline" className="bg-green-500">
+                              You paid
+                            </Badge>
+                          ) : userOwes > 0 ? (
+                            <div className="flex items-center gap-2">
+                              <Badge variant="outline" className="bg-red-500">
+                                You owe ${userOwes.toFixed(2)}
+                              </Badge>
+                              {userContributions > 0 && (
+                                <Badge
+                                  variant="outline"
+                                  className="bg-blue-500"
+                                >
+                                  Contributed ${userContributions.toFixed(2)}
+                                </Badge>
+                              )}
+                            </div>
+                          ) : (
+                            <Badge variant="outline" className="bg-green-500">
+                              Paid in full
+                            </Badge>
+                          )}
+                        </div>
+
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleContribute(expense)}
+                                  disabled={!canContribute}
+                                >
+                                  <CreditCard className="mr-2 h-4 w-4" />
+                                  Contribute
+                                </Button>
+                              </div>
+                            </TooltipTrigger>
+                            {!canContribute &&
+                              expense.paid_by !== currentUser?.id && (
+                                <TooltipContent>
+                                  {userOwes <= 0
+                                    ? "You've already paid your share"
+                                    : "You're not involved in this expense"}
+                                </TooltipContent>
+                              )}
+                          </Tooltip>
+                        </TooltipProvider>
+                      </div>
+                    )}
+
+                    {/* Show contributions if any exist */}
+                    {contributions.filter((c) => c.expense_id === expense.id)
+                      .length > 0 && (
+                      <div className="mt-3 pt-2 border-t">
+                        <p className="text-xs font-medium mb-1">
+                          Contributions:
+                        </p>
+                        <div className="space-y-1">
+                          {contributions
+                            .filter((c) => c.expense_id === expense.id)
+                            .map((contribution) => {
+                              const contributor = members.find(
+                                (u) => u.user_id === contribution.user_id,
+                              );
+                              return (
+                                <div
+                                  key={contribution.id}
+                                  className="flex justify-between text-xs text-muted-foreground"
+                                >
+                                  <span>
+                                    {contributor?.name} •{" "}
+                                    {new Date(
+                                      contribution.date,
+                                    ).toLocaleDateString()}
+                                    {contribution.note &&
+                                      ` • ${contribution.note}`}
+                                  </span>
+                                  <span>${contribution.amount.toFixed(2)}</span>
+                                </div>
+                              );
+                            })}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                  <p className="font-medium">${expense.amount.toFixed(2)}</p>
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          ) : (
+            <EmptyState
+              icon={DollarSign}
+              title="No expenses yet"
+              description="Add your first expense to start tracking"
+              action={
+                <Button onClick={() => setIsDialogOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Expense
+                </Button>
+              }
+            />
+          )}
         </CardContent>
       </Card>
     </div>

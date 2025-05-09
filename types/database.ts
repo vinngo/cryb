@@ -60,3 +60,12 @@ export interface HouseRule {
   markdown_content: string;
   updated_at: Date;
 }
+
+export interface Contribution {
+  id: string;
+  date: Date;
+  expense_id: string;
+  user_id: string;
+  amount: number;
+  note?: string;
+}

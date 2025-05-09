@@ -2,39 +2,30 @@ import { create } from "zustand";
 import { supabase } from "../supabase/client";
 import {
   User,
-  House,
-  Chore,
   Expense,
   HouseMember,
-  Note,
   Contribution,
 } from "../../../types/database";
 
-interface DashboardData {
+interface ExpensesData {
   user: User | null;
-  house: House | null;
-  members: HouseMember[];
-  chores: Chore[];
   expenses: Expense[];
+  members: HouseMember[];
   contributions: Contribution[];
-  notes: Note[];
   loading: boolean;
   error: string | null;
-  fetchDashboardData: () => Promise<void>;
+  fetchExpensesData: () => Promise<void>;
 }
 
-export const useDashboardStore = create<DashboardData>((set) => ({
+export const useExpenseStore = create<ExpensesData>((set) => ({
   user: null,
-  house: null,
-  members: [],
-  chores: [],
   expenses: [],
+  members: [],
   contributions: [],
-  notes: [],
   loading: true,
   error: null,
 
-  async fetchDashboardData() {
+  async fetchExpensesData() {
     try {
       set({ loading: true, error: null });
 
@@ -54,63 +45,43 @@ export const useDashboardStore = create<DashboardData>((set) => ({
       if (!appUser?.house_id) {
         set({
           user: appUser,
-          house: null,
-          members: [],
-          chores: [],
           expenses: [],
+          members: [],
           contributions: [],
-          notes: [],
           loading: false,
         });
         return;
       }
 
-      const [
-        houseRes,
-        membersRes,
-        choresRes,
-        expensesRes,
-        contributionsRes,
-        notesRes,
-      ] = await Promise.all([
-        supabase.from("houses").select("*").eq("id", appUser.house_id).single(),
+      const [expensesRes, membersRes, contributionsRes] = await Promise.all([
+        supabase.from("expenses").select("*").eq("house_id", appUser.house_id),
         supabase
           .from("house_members")
           .select("*")
           .eq("house_id", appUser.house_id),
-        supabase.from("chores").select("*").eq("house_id", appUser.house_id),
-        supabase.from("expenses").select("*").eq("house_id", appUser.house_id),
         supabase
           .from("contributions")
           .select("*, expenses(*)")
           .eq("expenses.house_id", appUser.house_id),
-        supabase.from("notes").select("*").eq("house_id", appUser.house_id),
       ]);
 
-      if (houseRes.error) console.error("house error:", houseRes.error.message);
-      if (membersRes.error)
-        console.error("members error:", membersRes.error.message);
-      if (choresRes.error)
-        console.error("chores error:", choresRes.error.message);
       if (expensesRes.error)
         console.error("expenses error:", expensesRes.error.message);
+      if (membersRes.error)
+        console.error("members error:", membersRes.error.message);
       if (contributionsRes.error)
         console.error("contributions error:", contributionsRes.error.message);
-      if (notesRes.error) console.error("notes error:", notesRes.error.message);
 
       set({
         user: appUser,
-        house: houseRes.data || null,
-        members: membersRes.data || [],
-        chores: choresRes.data || [],
         expenses: expensesRes.data || [],
+        members: membersRes.data || [],
         contributions: contributionsRes.data || [],
-        notes: notesRes.data || [],
         loading: false,
       });
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Failed to load dashboard";
+        error instanceof Error ? error.message : "Failed to load expenses";
 
       set({
         error: message,
