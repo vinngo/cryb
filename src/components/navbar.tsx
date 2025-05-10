@@ -21,6 +21,7 @@ import { useDashboardStore } from "@/lib/stores/dashboardStore";
 import { useChoreStore } from "@/lib/stores/choresStore";
 import { useExpenseStore } from "@/lib/stores/expensesStore";
 import { useNotesStore } from "@/lib/stores/notesStore";
+import { useRulesStore } from "@/lib/stores/rulesStore";
 import { useEffect } from "react";
 
 export default function Navbar() {
@@ -31,12 +32,14 @@ export default function Navbar() {
   const { fetchChoresData } = useChoreStore();
   const { fetchExpensesData } = useExpenseStore();
   const { fetchNotesData } = useNotesStore();
+  const { fetchRulesData } = useRulesStore();
 
   useEffect(() => {
     fetchDashboardData();
     fetchChoresData();
     fetchExpensesData();
     fetchNotesData();
+    fetchRulesData();
   }, []);
 
   const routes = [

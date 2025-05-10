@@ -2,7 +2,7 @@
 
 import type React from "react";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -23,14 +23,19 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Edit2 } from "lucide-react";
+import { useRulesStore } from "@/lib/stores/rulesStore";
+import { saveHouseRules } from "./actions";
+import { format } from "date-fns";
 
 export default function HouseRulesPage() {
+  const { user, rules: rulesData, fetchRulesData, loading } = useRulesStore();
   const [isEditing, setIsEditing] = useState(false);
-  const [rules, setRules] = useState(`# House Rules & Roommate Agreement
 
-## Quiet Hours
-- Sunday-Thursday: 10:00 PM - 8:00 AM
-- Friday-Saturday: 12:00 AM - 9:00 AM
+  useEffect(() => {
+    console.log(user);
+  }, [user]);
+  // Template for new house rules
+  const DEFAULT_TEMPLATE = `# House Rules Template
 
 ## Guests
 - Please notify all housemates at least 24 hours before having overnight guests
@@ -49,20 +54,53 @@ export default function HouseRulesPage() {
 
 ## Utilities
 - All utilities split equally
-- Bills due by the 5th of each month
-- Venmo preferred for payments
+- Zelle preferred for payments
 
 ## Conflict Resolution
 - Discuss issues directly and respectfully
 - House meetings as needed, minimum once per month
-- Majority vote for unresolved issues
+- Majority vote for unresolved issues`;
 
-Last updated: May 5, 2023`);
+  const [rules, setRules] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const saveRules = (e: React.FormEvent) => {
+  // Set rules content from data or template for new rules
+  useEffect(() => {
+    setRules(rulesData?.markdown_content || DEFAULT_TEMPLATE);
+  }, [rulesData, DEFAULT_TEMPLATE]);
+
+  const saveRules = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, we would save the rules to the database
-    setIsEditing(false);
+
+    if (!user?.id || !user?.house_id) {
+      setError("User must be part of a house to create rules");
+      return;
+    }
+
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("rules", rules);
+
+      const result = await saveHouseRules(formData, user.id, user.house_id);
+
+      if (!result.success) {
+        throw new Error(result.error || "Failed to save rules");
+      }
+
+      // Refresh rules data
+      await fetchRulesData();
+
+      setIsEditing(false);
+    } catch (error) {
+      console.error("Failed to save rules:", error);
+      setError(error instanceof Error ? error.message : "Failed to save rules");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -74,11 +112,16 @@ Last updated: May 5, 2023`);
             Roommate agreement and house guidelines
           </p>
         </div>
-        <Dialog open={isEditing} onOpenChange={setIsEditing}>
+        <Dialog
+          open={isEditing}
+          onOpenChange={(open) => {
+            if (!isSaving) setIsEditing(open);
+          }}
+        >
           <DialogTrigger asChild>
             <Button>
               <Edit2 className="mr-2 h-4 w-4" />
-              Edit Rules
+              {rulesData ? "Edit Rules" : "Create Rules"}
             </Button>
           </DialogTrigger>
           <DialogContent className="max-w-2xl">
@@ -101,77 +144,116 @@ Last updated: May 5, 2023`);
                   />
                 </div>
               </div>
+              {error && <p className="text-sm text-red-500 mt-2">{error}</p>}
               <DialogFooter>
-                <Button type="submit">Save Changes</Button>
+                <Button
+                  type="submit"
+                  disabled={isSaving}
+                  className="w-full sm:w-auto"
+                >
+                  {isSaving ? "Saving..." : "Save Changes"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>House Rules & Roommate Agreement</CardTitle>
-          <CardDescription>Last updated: May 5, 2023</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="prose max-w-none">
-            <h2>Quiet Hours</h2>
-            <ul>
-              <li>Sunday-Thursday: 10:00 PM - 8:00 AM</li>
-              <li>Friday-Saturday: 12:00 AM - 9:00 AM</li>
-            </ul>
-
-            <h2>Guests</h2>
-            <ul>
-              <li>
-                Please notify all housemates at least 24 hours before having
-                overnight guests
-              </li>
-              <li>
-                Guests should not stay more than 3 consecutive nights without
-                prior agreement
-              </li>
-              <li>Guests must respect all house rules</li>
-            </ul>
-
-            <h2>Cleaning</h2>
-            <ul>
-              <li>Kitchen: Clean dishes within 24 hours of use</li>
-              <li>
-                Bathroom: Each person cleans once per week (see chore schedule)
-              </li>
-              <li>
-                Common areas: Vacuum and dust every Sunday (rotating schedule)
-              </li>
-            </ul>
-
-            <h2>Shared Items</h2>
-            <ul>
-              <li>
-                Groceries: Label personal items, shared items noted on
-                whiteboard
-              </li>
-              <li>Appliances: Free to use but clean after use</li>
-              <li>Toiletries: Personal unless explicitly shared</li>
-            </ul>
-
-            <h2>Utilities</h2>
-            <ul>
-              <li>All utilities split equally</li>
-              <li>Bills due by the 5th of each month</li>
-              <li>Venmo preferred for payments</li>
-            </ul>
-
-            <h2>Conflict Resolution</h2>
-            <ul>
-              <li>Discuss issues directly and respectfully</li>
-              <li>House meetings as needed, minimum once per month</li>
-              <li>Majority vote for unresolved issues</li>
-            </ul>
+      {loading ? (
+        <Card className="p-8">
+          <div className="flex justify-center items-center h-40">
+            <div className="flex flex-col items-center space-y-4">
+              <div className="animate-pulse h-6 w-40 bg-muted rounded"></div>
+              <p className="text-muted-foreground">Loading house rules...</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+      ) : rulesData ? (
+        <Card>
+          <CardHeader>
+            <CardTitle>House Rules</CardTitle>
+            <CardDescription>
+              Last updated:{" "}
+              {rulesData.updated_at
+                ? format(new Date(rulesData.updated_at), "MMMM d, yyyy")
+                : "N/A"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="prose max-w-none whitespace-pre-wrap">
+              {rulesData.markdown_content.split("\n").map((line, index) => {
+                // Apply some basic formatting for markdown headings and lists
+                if (line.startsWith("# ")) {
+                  return (
+                    <h1 key={index} className="text-2xl font-bold mt-6 mb-4">
+                      {line.substring(2)}
+                    </h1>
+                  );
+                } else if (line.startsWith("## ")) {
+                  return (
+                    <h2 key={index} className="text-xl font-bold mt-5 mb-3">
+                      {line.substring(3)}
+                    </h2>
+                  );
+                } else if (line.startsWith("- ")) {
+                  return (
+                    <li key={index} className="ml-5 mb-1">
+                      {line.substring(2)}
+                    </li>
+                  );
+                } else if (line === "") {
+                  return <br key={index} />;
+                }
+                return (
+                  <p key={index} className="mb-2">
+                    {line}
+                  </p>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <Card>
+          <CardHeader>
+            <CardTitle>No House Rules Yet</CardTitle>
+            <CardDescription>
+              Establish guidelines for a harmonious living environment
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center py-10 space-y-6 text-center">
+            <div className="max-w-md space-y-4">
+              <div className="flex flex-col items-center mb-4">
+                <div className="bg-muted p-3 rounded-full mb-3">
+                  <Edit2 className="h-8 w-8 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold">
+                  Create Your House Rules
+                </h3>
+              </div>
+              <p className="text-muted-foreground">
+                Setting clear expectations helps everyone in your house live
+                together smoothly. Consider including guidelines for:
+              </p>
+              <ul className="text-sm text-muted-foreground text-left pl-5 pt-2 space-y-2 list-disc">
+                <li>Quiet hours</li>
+                <li>Guest policies</li>
+                <li>Cleaning responsibilities</li>
+                <li>Shared items and spaces</li>
+                <li>Utility bills</li>
+                <li>Conflict resolution</li>
+              </ul>
+              <p className="text-sm text-muted-foreground">
+                A template will be provided to help you get started.
+              </p>
+            </div>
+            <Button onClick={() => setIsEditing(true)}>
+              <Edit2 className="mr-2 h-4 w-4" />
+              Create House Rules
+            </Button>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
