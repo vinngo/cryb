@@ -87,10 +87,11 @@ export async function signup(formData: FormData) {
 
   const { error: updateUserError } = await supabase
     .from("users")
-    .update("house_id", success.id);
+    .update({ house_id: success.id })
+    .eq("id", user.id);
 
   if (updateUserError) {
-    console.log(updateUserError.message);
+    console.error(updateUserError.message);
     redirect("/error");
   }
 
