@@ -10,7 +10,7 @@ export interface House {
   name: string;
   created_by: string;
   created_at: Date;
-  house: string;
+  code: string;
 }
 
 export interface Chore {

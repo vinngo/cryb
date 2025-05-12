@@ -13,33 +13,57 @@ import {
   Home,
   LogOut,
   Menu,
+  User,
   Users,
 } from "lucide-react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useDashboardStore } from "@/lib/stores/dashboardStore";
 import { useChoreStore } from "@/lib/stores/choresStore";
 import { useExpenseStore } from "@/lib/stores/expensesStore";
 import { useNotesStore } from "@/lib/stores/notesStore";
 import { useRulesStore } from "@/lib/stores/rulesStore";
+import { useUserStore } from "@/lib/stores/usersStore";
 import { useEffect } from "react";
 
 export default function Navbar() {
   const pathname = usePathname();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
-  const { fetchDashboardData, user } = useDashboardStore();
+  const { fetchDashboardData } = useDashboardStore();
   const { fetchChoresData } = useChoreStore();
   const { fetchExpensesData } = useExpenseStore();
   const { fetchNotesData } = useNotesStore();
   const { fetchRulesData } = useRulesStore();
+  const { user, email, fetchUserData } = useUserStore();
 
   useEffect(() => {
-    fetchDashboardData();
-    fetchChoresData();
-    fetchExpensesData();
-    fetchNotesData();
-    fetchRulesData();
+    fetchUserData();
+    switch (pathname) {
+      case "/dashboard":
+        fetchDashboardData();
+        break;
+      case "/chores":
+        fetchChoresData();
+        break;
+      case "/expenses":
+        fetchExpensesData();
+        break;
+      case "/notes":
+        fetchNotesData();
+        break;
+      case "/house-rules":
+        fetchRulesData();
+        break;
+    }
   }, []);
 
   const routes = [
@@ -106,23 +130,47 @@ export default function Navbar() {
 
           <div className="flex items-center gap-4">
             <div className="hidden md:flex items-center gap-2">
-              <Avatar className="h-8 w-8">
-                <AvatarFallback>{user?.display_name.charAt(0)}</AvatarFallback>
-              </Avatar>
-              <span className="text-sm font-medium">{user?.display_name}</span>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="relative h-8 w-8 rounded-full"
+                  >
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>
+                        {user?.display_name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-56" align="end" forceMount>
+                  <DropdownMenuLabel className="font-normal">
+                    <div className="flex flex-col space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {user?.display_name}
+                      </p>
+                      <p className="text-xs leading-none text-muted-foreground">
+                        {email}
+                      </p>
+                    </div>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/profile">
+                      <User className="mr-2 h-4 w-4" />
+                      <span>Profile</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/login">
+                      <LogOut className="mr-2 h-4 w-4" />
+                      <span>Log out</span>
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="hidden md:flex"
-              asChild
-            >
-              <Link href="/login">
-                <LogOut className="h-4 w-4" />
-                <span className="sr-only">Logout</span>
-              </Link>
-            </Button>
 
             {/* Mobile Menu Trigger */}
             <Sheet open={isMenuOpen} onOpenChange={setIsMenuOpen}>
