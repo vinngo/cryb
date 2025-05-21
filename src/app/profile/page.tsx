@@ -27,15 +27,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
-import {
-  AlertCircle,
-  Bell,
-  Copy,
-  Home,
-  LogOut,
-  Moon,
-  User,
-} from "lucide-react";
+import { AlertCircle, Bell, Copy, Home, LogOut, User } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { useUserStore } from "@/lib/stores/usersStore";
@@ -61,7 +53,7 @@ export default function ProfilePage() {
   // Get current user (in a real app, this would come from auth)
   const [currentUser, setCurrentUser] = useState(userData);
   const [name, setName] = useState(currentUser?.display_name);
-  const [email, setEmail] = useState(emailData);
+  const [email] = useState(emailData);
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -214,7 +206,8 @@ export default function ProfilePage() {
   };
 
   const copyInviteCode = () => {
-    navigator.clipboard.writeText(house?.code);
+    if (!house) return;
+    navigator.clipboard.writeText(house.code);
     toast({
       title: "Invite code copied",
       description: "House invite code copied to clipboard.",
@@ -582,7 +575,6 @@ export default function ProfilePage() {
                       id="dark-mode"
                       checked={darkMode}
                       onCheckedChange={setDarkMode}
-                      icon={<Moon className="h-4 w-4" />}
                     />
                   </div>
                 </CardContent>

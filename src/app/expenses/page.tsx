@@ -67,7 +67,7 @@ export default function ExpensesPage() {
     loading,
     fetchExpensesData,
   } = useExpenseStore();
-  
+
   // Check if user has a house
   const hasHouse = user?.house_id != null;
 
@@ -534,7 +534,7 @@ export default function ExpensesPage() {
             <Skeleton className="w-full h-[300px]" />
             <Skeleton className="w-full h-[300px]" />
           </>
-        ) : !hasHouse ? (
+        ) : !hasHouse && currentUser ? (
           <Card className="col-span-2 mt-6">
             <CardContent className="pt-6">
               <EmptyState
@@ -622,7 +622,8 @@ export default function ExpensesPage() {
                         .filter(
                           (expense) =>
                             expense.paid_by === currentUser?.id ||
-                            expense.split_between.includes(currentUser?.id),
+                            (currentUser &&
+                              expense.split_between.includes(currentUser.id)),
                         )
                         .reduce((sum, expense) => {
                           const totalPeople = expense.split_between.length + 1;
@@ -648,20 +649,20 @@ export default function ExpensesPage() {
                     <span className="font-medium">Net Balance</span>
                     <span
                       className={`font-bold ${
-                        balances.find((b) => b.user.user_id === currentUser?.id)
-                          ?.balance! >= 0
-                          ? "text-green-500"
-                          : "text-red-500"
+                        (balances.find(
+                          (b) => b.user.user_id === currentUser?.id,
+                        )?.balance ?? 0 >= 0)
+                          ? "text-red-500"
+                          : "text-green-500"
                       }`}
                     >
                       $
                       {Math.abs(
-                        balances.find(
-                          (b) => b.user.user_id === currentUser?.id,
-                        )?.balance || 0,
+                        balances.find((b) => b.user.user_id === currentUser?.id)
+                          ?.balance ?? 0,
                       ).toFixed(2)}
-                      {balances.find((b) => b.user.user_id === currentUser?.id)
-                        ?.balance! >= 0
+                      {(balances.find((b) => b.user.user_id === currentUser?.id)
+                        ?.balance ?? 0) >= 0
                         ? " (you are owed)"
                         : " (you owe)"}
                     </span>
@@ -677,7 +678,7 @@ export default function ExpensesPage() {
         <div className="space-y-4">
           <Skeleton className="h-[400px] w-full" />
         </div>
-      ) : !hasHouse ? null : (
+      ) : !hasHouse && currentUser ? null : (
         <Card>
           <CardHeader>
             <CardTitle>Recent Expenses</CardTitle>

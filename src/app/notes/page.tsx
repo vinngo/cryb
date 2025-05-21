@@ -24,7 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PinIcon, Plus, Trash2, Home } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { useNotesStore } from "@/lib/stores/notesStore";
