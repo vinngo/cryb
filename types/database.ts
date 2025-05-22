@@ -76,4 +76,6 @@ export interface ShoppingListItem {
   name: string;
   quantity: number;
   added_by: string;
+  is_checked: boolean;
+  category: string;
 }

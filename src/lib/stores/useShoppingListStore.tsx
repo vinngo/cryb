@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { ShoppingListItem } from "../../../types/database";
-import { createClient } from "../supabase/server";
+import { createClient } from "../supabase/client";
 
 interface ShoppingListData {
   items: ShoppingListItem[];
@@ -17,7 +17,7 @@ export const useShoppingListStore = create<ShoppingListData>((set) => ({
     try {
       set({ loading: true });
 
-      const supabase = await createClient();
+      const supabase = createClient();
 
       const {
         data: { user },

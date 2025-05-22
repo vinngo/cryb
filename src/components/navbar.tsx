@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   CalendarDays,
   ClipboardList,
+  ShoppingBasket,
   DollarSign,
   FileText,
   Home,
@@ -32,6 +33,7 @@ import { useExpenseStore } from "@/lib/stores/expensesStore";
 import { useNotesStore } from "@/lib/stores/notesStore";
 import { useRulesStore } from "@/lib/stores/rulesStore";
 import { useUserStore } from "@/lib/stores/usersStore";
+import { useShoppingListStore } from "@/lib/stores/useShoppingListStore";
 import { useEffect } from "react";
 
 export default function Navbar() {
@@ -43,6 +45,7 @@ export default function Navbar() {
   const { fetchExpensesData } = useExpenseStore();
   const { fetchNotesData } = useNotesStore();
   const { fetchRulesData } = useRulesStore();
+  const { fetchShoppingListData } = useShoppingListStore();
   const { user, email, fetchUserData } = useUserStore();
 
   useEffect(() => {
@@ -57,6 +60,9 @@ export default function Navbar() {
       case "/expenses":
         fetchExpensesData();
         break;
+      case "/shopping-list":
+        fetchShoppingListData();
+        break;
       case "/notes":
         fetchNotesData();
         break;
@@ -64,7 +70,16 @@ export default function Navbar() {
         fetchRulesData();
         break;
     }
-  }, []);
+  }, [
+    fetchChoresData,
+    fetchDashboardData,
+    fetchExpensesData,
+    fetchShoppingListData,
+    fetchNotesData,
+    fetchRulesData,
+    fetchUserData,
+    pathname,
+  ]);
 
   const routes = [
     {
@@ -81,6 +96,11 @@ export default function Navbar() {
       name: "Expenses",
       href: "/expenses",
       icon: DollarSign,
+    },
+    {
+      name: "Shopping List",
+      href: "/shopping-list",
+      icon: ShoppingBasket,
     },
     {
       name: "Notes",
