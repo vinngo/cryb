@@ -61,7 +61,8 @@ export const useExpenseStore = create<ExpensesData>((set) => ({
           .eq("house_id", appUser.house_id),
         supabase
           .from("contributions")
-          .select("*, expenses(*)")
+          .select("*, expenses!inner(*)")
+          .eq("user_id", appUser.id)
           .eq("expenses.house_id", appUser.house_id),
       ]);
 

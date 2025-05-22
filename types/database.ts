@@ -69,3 +69,11 @@ export interface Contribution {
   amount: number;
   note?: string;
 }
+
+export interface ShoppingListItem {
+  id: string;
+  house_id: string;
+  name: string;
+  quantity: number;
+  added_by: string;
+}
