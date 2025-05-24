@@ -79,3 +79,27 @@ export interface ShoppingListItem {
   is_checked: boolean;
   category: string;
 }
+
+export interface Poll {
+  id: string;
+  house_id: string;
+  created_by: string;
+  question: string;
+  multiple_choice: boolean;
+  created_at: Date;
+  expires_at: Date;
+}
+
+export interface PollOption {
+  id: string;
+  poll_id: string;
+  option_text: string;
+}
+
+export interface PollVote {
+  id: string;
+  poll_id: string;
+  user_id: string;
+  option_id: string;
+  created_at: Date;
+}
