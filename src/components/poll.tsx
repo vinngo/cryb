@@ -12,14 +12,7 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "./ui/checkbox";
 import { Button } from "./ui/button";
-
-interface PollProps {
-  title: string;
-  multipleChoice: boolean;
-  options: string[];
-  created_at: Date;
-  expires_at: Date;
-}
+import { PollProps } from "../../types/poll";
 
 export default function Poll({
   title,
@@ -55,10 +48,10 @@ export default function Poll({
         {multipleChoice ? (
           options.map((option) => (
             <div
-              key={option}
+              key={option.id}
               className="flex item-center justify-between space-x-2 rounded-lg border p-4"
             >
-              <label htmlFor={option}>{option}</label>
+              <label htmlFor={option.option_text}>{option.option_text}</label>
               <Checkbox />
             </div>
           ))
@@ -67,10 +60,10 @@ export default function Poll({
             {options.map((option) => (
               <div
                 className="flex items-center justify-between space-x-2 rounded-lg border p-4"
-                key={option}
+                key={option.id}
               >
-                <label htmlFor={option}>{option}</label>
-                <RadioGroupItem value={option} id={option} />
+                <label htmlFor={option.option_text}>{option.option_text}</label>
+                <RadioGroupItem value={option.option_text} id={option.id} />
               </div>
             ))}
           </RadioGroup>
