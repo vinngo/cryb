@@ -34,6 +34,7 @@ import { useNotesStore } from "@/lib/stores/notesStore";
 import { useRulesStore } from "@/lib/stores/rulesStore";
 import { useUserStore } from "@/lib/stores/usersStore";
 import { useShoppingListStore } from "@/lib/stores/useShoppingListStore";
+import { usePollStore } from "@/lib/stores/pollsStore";
 import { useEffect } from "react";
 
 export default function Navbar() {
@@ -44,6 +45,7 @@ export default function Navbar() {
   const { fetchChoresData } = useChoreStore();
   const { fetchExpensesData } = useExpenseStore();
   const { fetchNotesData } = useNotesStore();
+  const { fetchPollData } = usePollStore();
   const { fetchRulesData } = useRulesStore();
   const { fetchShoppingListData } = useShoppingListStore();
   const { user, email, fetchUserData } = useUserStore();
@@ -65,6 +67,7 @@ export default function Navbar() {
         break;
       case "/notes":
         fetchNotesData();
+        fetchPollData();
         break;
       case "/house-rules":
         fetchRulesData();
@@ -76,6 +79,7 @@ export default function Navbar() {
     fetchExpensesData,
     fetchShoppingListData,
     fetchNotesData,
+    fetchPollData,
     fetchRulesData,
     fetchUserData,
     pathname,

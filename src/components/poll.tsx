@@ -22,17 +22,19 @@ export default function Poll({
 }: PollProps) {
   const calculateTimeLeft = () => {
     const now = new Date();
+    if (typeof expires_at === "string") {
+      expires_at = new Date(expires_at);
+    }
     const timeLeft = expires_at.getTime() - now.getTime();
     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
     const hours = Math.floor(
       (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
     );
     const minutes = Math.floor((timeLeft % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((timeLeft % (1000 * 60)) / 1000);
-    return { days, hours, minutes, seconds };
+    return { days, hours, minutes };
   };
 
-  const { days, hours, minutes, seconds } = calculateTimeLeft();
+  const { days, hours, minutes } = calculateTimeLeft();
 
   return (
     <Card>
@@ -71,7 +73,7 @@ export default function Poll({
       </CardContent>
       <CardFooter className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <span>{`${days}d ${hours}h ${minutes}m ${seconds}s`}</span>
+          <span className="text-sm text-muted-foreground">{`${days}d ${hours}h ${minutes}m`}</span>
         </div>
         <div className="flex items-center gap-4">
           <Button>Vote</Button>
