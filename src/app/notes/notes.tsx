@@ -36,7 +36,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { PinIcon, Plus, Trash2, Home } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import Poll from "@/components/poll";
+import Poll from "@/components/poll/poll";
 import { useNotesStore } from "@/lib/stores/notesStore";
 import { usePollStore } from "@/lib/stores/pollsStore";
 import {
@@ -63,7 +63,11 @@ export default function NotesPage() {
     fetchNotesData,
   } = useNotesStore();
   const [notes, setNotes] = useState(notesData);
-  const { polls: pollsData, loading: pollsLoading } = usePollStore();
+  const {
+    polls: pollsData,
+    loading: pollsLoading,
+    fetchPollData,
+  } = usePollStore();
   const [polls, setPolls] = useState(pollsData);
   const [pollOptions, setPollOptions] = useState<Option[]>([
     { id: 0, text: "Type your answer" },
@@ -136,7 +140,7 @@ export default function NotesPage() {
       console.error(result?.error || "Failed to add poll");
     }
 
-    await fetchNotesData();
+    await fetchPollData();
 
     setIsDialogOpen(false);
     setIsPinned(false);
