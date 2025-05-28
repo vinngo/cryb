@@ -80,6 +80,8 @@ export default function NotesPage() {
   const searchParams = useSearchParams();
   const action = searchParams.get("action");
 
+  const now = new Date();
+
   // Get current user (in a real app, this would come from auth)
   const currentUser = user;
 
@@ -197,7 +199,6 @@ export default function NotesPage() {
         return option;
       }),
     );
-    console.log(pollOptions);
   };
 
   const removeOption = (id: number) => {
@@ -521,21 +522,24 @@ export default function NotesPage() {
                   </Card>
                 );
               })}
-            {polls.map((poll) => (
-              <Poll
-                key={poll.id}
-                id={poll.id}
-                title={poll.title}
-                multipleChoice={poll.multipleChoice}
-                options={poll.options}
-                votes={poll.votes}
-                created_at={poll.created_at}
-                expires_at={poll.expires_at}
-              />
-            ))}
+            {polls
+              .filter((poll) => new Date(poll.expires_at) > now)
+              .map((poll) => (
+                <Poll
+                  key={poll.id}
+                  id={poll.id}
+                  title={poll.title}
+                  multipleChoice={poll.multipleChoice}
+                  options={poll.options}
+                  votes={poll.votes}
+                  created_at={poll.created_at}
+                  expires_at={poll.expires_at}
+                />
+              ))}
 
             {notes.filter((note) => !note.is_pinned).length === 0 &&
-              polls.length === 0 && (
+              polls.filter((poll) => new Date(poll.expires_at) > now).length ===
+                0 && (
                 <p className="text-muted-foreground col-span-2 text-center py-8">
                   No notes yet. Create one to get started!
                 </p>
