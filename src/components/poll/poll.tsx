@@ -80,6 +80,7 @@ export default function Poll({
       return;
     }
     setVoted(true);
+    setVotedOption(selectedOption);
     if (selectedOption) {
       const { success, error } = await votePoll(id, user.id, selectedOption.id);
       if (!success) {
@@ -100,7 +101,15 @@ export default function Poll({
     }
   };
 
-  const handleRemoveVote = async () => {};
+  const handleRemoveVote = async () => {
+    if (!votedOption) return;
+    setVoted(false);
+    const { success, error } = await removeVote(votedOption.id);
+    if (!success) {
+      console.error(error);
+      setVoted(true);
+    }
+  };
 
   return (
     <Card>
