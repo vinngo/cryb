@@ -47,6 +47,7 @@ import { useChoreStore } from "@/lib/stores/choresStore";
 import addNewChore, { updateChore } from "./actions";
 import { Chore } from "../../../types/database";
 import { EmptyState } from "@/components/empty-state";
+import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
 export default function ChoresPage() {
@@ -64,6 +65,7 @@ export default function ChoresPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [date, setDate] = useState<Date | undefined>(undefined);
   const [assignedTo, setAssignedTo] = useState<string>("");
+  const { toast } = useToast();
 
   // Check if user has a house
   const hasHouse = user?.house_id != null;
@@ -119,6 +121,15 @@ export default function ChoresPage() {
 
   const addChore = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+
+    if (!date) {
+      toast({
+        title: "Date is required",
+        description: "Please select a date for the chore",
+        variant: "destructive",
+      });
+      return;
+    }
 
     // Get FormData from the form event
     const formData = new FormData(e.currentTarget);
