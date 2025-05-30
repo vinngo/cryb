@@ -28,14 +28,55 @@ export default function Poll({
 }: PollProps) {
   const { user } = useUserStore();
 
-  const [votesData, setVotesData] = useState(initialVotesData);
+  const now = new Date();
 
+  const expiresAtDate =
+    typeof expires_at === "string" ? new Date(expires_at) : expires_at;
+
+  const [votesData, setVotesData] = useState(initialVotesData);
   const [selectedOption, setSelectedOption] = useState<PollOption | undefined>(
     undefined,
   );
   const [selectedOptions, setSelectedOptions] = useState<PollOption[]>([]);
   const [vote, setVote] = useState<PollVote | undefined>(undefined);
   const [votes, setVotes] = useState<PollVote[]>([]);
+  const [winners, setWinners] = useState<PollOption[]>([]);
+  const [expired] = useState(expiresAtDate < now);
+
+  // Calculate winner(s) whenever votes change or when poll expires
+  useEffect(() => {
+    if (expired) {
+      // Count votes for each option
+      const voteCounts = votesData.reduce(
+        (acc, vote) => {
+          acc[vote.option_id] = (acc[vote.option_id] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>,
+      );
+
+      // Find the maximum vote count
+      const maxVotes =
+        Object.values(voteCounts).length > 0
+          ? Math.max(...Object.values(voteCounts))
+          : 0;
+
+      // Find all options with the maximum vote count (only if there are votes)
+      const winningOptionIds = Object.keys(voteCounts).filter(
+        (optionId) => voteCounts[optionId] === maxVotes && maxVotes > 0,
+      );
+
+      // Set winning options
+      const winningOptions = options.filter((option) =>
+        winningOptionIds.includes(option.id),
+      );
+
+      setWinners(winningOptions);
+    } else {
+      // Clear winners if poll is not expired
+      setWinners([]);
+    }
+  }, [votesData, options, expired]);
 
   useEffect(() => {
     if (multipleChoice) {
@@ -49,19 +90,19 @@ export default function Poll({
   const [voted, setVoted] = useState<boolean>(false);
 
   useEffect(() => {
-    if (multipleChoice) {
-      setVoted(votes.map((vote) => vote.user_id === user?.id).length > 0);
+    if (user) {
+      const userVoted = votesData.some((v) => v.user_id === user.id);
+      setVoted(userVoted);
     } else {
-      setVoted(vote !== undefined);
+      setVoted(false);
     }
-  }, [votes, voted, user?.id, multipleChoice, vote]);
+  }, [votesData, user]);
 
   const calculateTimeLeft = () => {
     const now = new Date();
-    if (typeof expires_at === "string") {
-      expires_at = new Date(expires_at);
-    }
-    const timeLeft = expires_at.getTime() - now.getTime();
+    const expiryDate =
+      typeof expires_at === "string" ? new Date(expires_at) : expires_at;
+    const timeLeft = expiryDate.getTime() - now.getTime();
     const days = Math.floor(timeLeft / (1000 * 60 * 60 * 24));
     const hours = Math.floor(
       (timeLeft % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60),
@@ -74,22 +115,23 @@ export default function Poll({
 
   const handleMultipleChoiceClick = (optionId: string) => {
     // Implement logic to handle multiple choice click
-    if (voted) return;
-    //@ts-expect-error this should work regardless
+    if (expired || voted) return;
+
     setSelectedOptions((prevOptions) => {
       if (prevOptions.some((option) => option.id === optionId)) {
         return prevOptions.filter((option) => option.id !== optionId);
       } else {
-        return [
-          ...prevOptions,
-          options.find((option) => option.id === optionId),
-        ];
+        const foundOption = options.find((option) => option.id === optionId);
+        if (foundOption) {
+          return [...prevOptions, foundOption];
+        }
+        return prevOptions;
       }
     });
   };
 
   const handleSingleChoiceClick = (optionId: string) => {
-    if (voted) return;
+    if (expired || voted) return;
     setSelectedOption(options.find((option) => option.id === optionId));
   };
 
@@ -245,62 +287,33 @@ export default function Poll({
             {options.map((option) => (
               <div
                 key={option.id}
-                className={
-                  votesData.some(
-                    (v) => v.user_id === user?.id && v.option_id === option.id,
-                  )
-                    ? "flex item-center justify-between space-x-2 rounded-lg border border-green-500 p-4"
-                    : "flex item-center justify-between space-x-2 rounded-lg border p-4"
-                }
+                className={`
+                  flex items-center justify-between space-x-2 rounded-lg border p-4
+                  ${
+                    votesData.some(
+                      (v) =>
+                        v.user_id === user?.id && v.option_id === option.id,
+                    )
+                      ? "border-green-500"
+                      : ""
+                  }
+                  ${
+                    expired &&
+                    winners &&
+                    winners.some((w) => w.id === option.id)
+                      ? "bg-green-900 border-green-500"
+                      : ""
+                  }
+                `}
                 onClick={() => handleMultipleChoiceClick(option.id)}
               >
                 <label htmlFor={option.option_text}>{option.option_text}</label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">
-                    {
-                      votes.filter((vote) => vote.option_id === option.id)
-                        .length
-                    }{" "}
-                    {votes.filter((vote) => vote.option_id === option.id)
-                      .length === 1
-                      ? "vote"
-                      : "votes"}
-                  </span>
-                  <span className="text-sm text-muted-foreground">
-                    {(votes.filter((vote) => vote.option_id === option.id)
-                      .length /
-                      votes.length) *
-                      100}
-                    {"%"}
-                  </span>
-                  <Checkbox
-                    id={option.id}
-                    onChange={() => handleMultipleChoiceClick(option.id)}
-                    checked={selectedOptions.some(
-                      (selectedOption) => selectedOption.id === option.id,
-                    )}
-                    disabled={voted}
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <RadioGroup value={selectedOption?.option_text}>
-            {options.map((option) => (
-              <div
-                className={
-                  votesData.some(
-                    (v) => v.user_id === user?.id && v.option_id === option.id,
-                  )
-                    ? "flex items-center justify-between space-x-2 rounded-lg border border-green-500 p-4"
-                    : "flex items-center justify-between space-x-2 rounded-lg border p-4"
-                }
-                key={option.id}
-                onClick={() => handleSingleChoiceClick(option.id)}
-              >
-                <label htmlFor={option.option_text}>{option.option_text}</label>
-                <div className="flex items-center gap-2">
+                  {expired && winners.some((w) => w.id === option.id) && (
+                    <span className="text-yellow-600 font-bold text-xs">
+                      WINNER
+                    </span>
+                  )}
                   <span className="text-sm text-muted-foreground">
                     {
                       votesData.filter((vote) => vote.option_id === option.id)
@@ -311,19 +324,90 @@ export default function Poll({
                       ? "vote"
                       : "votes"}
                   </span>
+                  {votesData.length > 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(
+                        (votesData.filter(
+                          (vote) => vote.option_id === option.id,
+                        ).length /
+                          votesData.length) *
+                          100,
+                      )}
+                      {"%"}
+                    </span>
+                  )}
+                  {!expired && (
+                    <Checkbox
+                      id={option.id}
+                      onChange={() => handleMultipleChoiceClick(option.id)}
+                      checked={selectedOptions.some(
+                        (selectedOption) => selectedOption.id === option.id,
+                      )}
+                      disabled={expired || voted}
+                    />
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <RadioGroup value={selectedOption?.option_text}>
+            {options.map((option) => (
+              <div
+                className={`
+                  flex items-center justify-between space-x-2 rounded-lg border p-4
+                  ${
+                    votesData.some(
+                      (v) =>
+                        v.user_id === user?.id && v.option_id === option.id,
+                    )
+                      ? "border-green-500"
+                      : ""
+                  }
+                  ${
+                    expired && winners.some((w) => w.id === option.id)
+                      ? "bg-green-900 border-green-500"
+                      : ""
+                  }
+                `}
+                key={option.id}
+                onClick={() => handleSingleChoiceClick(option.id)}
+              >
+                <label htmlFor={option.option_text}>{option.option_text}</label>
+                <div className="flex items-center gap-2">
+                  {expired && winners.some((w) => w.id === option.id) && (
+                    <span className="font-bold text-xs">WINNER</span>
+                  )}
                   <span className="text-sm text-muted-foreground">
-                    {(votesData.filter((vote) => vote.option_id === option.id)
-                      .length /
-                      votesData.length) *
-                      100}
-                    {"%"}
+                    {
+                      votesData.filter((vote) => vote.option_id === option.id)
+                        .length
+                    }{" "}
+                    {votesData.filter((vote) => vote.option_id === option.id)
+                      .length === 1
+                      ? "vote"
+                      : "votes"}
                   </span>
-                  <RadioGroupItem
-                    value={option.option_text}
-                    id={option.id}
-                    onChange={() => handleSingleChoiceClick(option.id)}
-                    disabled={voted}
-                  />
+                  {votesData.length > 0 && (
+                    <span className="text-sm text-muted-foreground">
+                      {Math.round(
+                        (votesData.filter(
+                          (vote) => vote.option_id === option.id,
+                        ).length /
+                          votesData.length) *
+                          100,
+                      )}
+                      {"%"}
+                    </span>
+                  )}
+                  {!expired && (
+                    <RadioGroupItem
+                      value={option.option_text}
+                      id={option.id}
+                      onChange={() => handleSingleChoiceClick(option.id)}
+                      disabled={expired || voted}
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -332,15 +416,21 @@ export default function Poll({
       </CardContent>
       <CardFooter className="flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">{`${days}d ${hours}h ${minutes}m`}</span>
-        </div>
-        <div className="flex items-center gap-4">
-          {voted ? (
-            <Button onClick={() => handleRemoveVote()}>Remove Vote</Button>
+          {expired ? (
+            <span className="text-sm text-muted-foreground">Poll Expired</span>
           ) : (
-            <Button onClick={() => handleVote()}>Vote</Button>
+            <span className="text-sm text-muted-foreground">{`${days}d ${hours}h ${minutes}m`}</span>
           )}
         </div>
+        {!expired && (
+          <div className="flex items-center gap-4">
+            {voted ? (
+              <Button onClick={() => handleRemoveVote()}>Remove Vote</Button>
+            ) : (
+              <Button onClick={() => handleVote()}>Vote</Button>
+            )}
+          </div>
+        )}
       </CardFooter>
     </Card>
   );

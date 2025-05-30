@@ -55,6 +55,7 @@ import { useExpenseStore } from "@/lib/stores/expensesStore";
 import { Contribution, Expense } from "../../../types/database";
 import { addNewExpense, addNewContribution } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 export default function ExpensesPage() {
   const searchParams = useSearchParams();
@@ -85,6 +86,7 @@ export default function ExpensesPage() {
   const [contributionAmount, setContributionAmount] = useState("");
   const [contributionNote, setContributionNote] = useState("");
   const [paidBy, setPaidBy] = useState<string>("");
+  const { toast } = useToast();
 
   // Add state for contributions
   const [contributions, setContributions] =
@@ -202,6 +204,15 @@ export default function ExpensesPage() {
 
     if (!user?.house_id) {
       console.error("User is not part of a house");
+      return;
+    }
+
+    if (!date) {
+      toast({
+        title: "Date is required",
+        description: "Please select a date for the expense",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -382,18 +393,18 @@ export default function ExpensesPage() {
                           {date ? format(date, "PPP") : "Select date"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0">
+                      <PopoverContent className="w-auto p-0 z-50">
                         <Calendar
                           mode="single"
                           selected={date}
                           onSelect={setDate}
-                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>
                     <input
                       type="hidden"
                       name="date"
+                      required
                       value={date ? date.toISOString() : ""}
                     />
                   </div>
