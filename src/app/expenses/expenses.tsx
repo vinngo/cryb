@@ -223,6 +223,7 @@ export default function ExpensesPage() {
 
     //call server action using formData...
     setSubmitting(true);
+    setIsDialogOpen(false);
     const result = await addNewExpense(formData, user?.house_id);
     setSubmitting(false);
 
@@ -235,8 +236,6 @@ export default function ExpensesPage() {
     setDate(undefined);
     setPaidBy("");
     setSelectedUsers([]);
-
-    setIsDialogOpen(false);
   };
 
   const resetForm = () => {
@@ -263,7 +262,7 @@ export default function ExpensesPage() {
     const formData = new FormData(e.currentTarget);
 
     formData.set("paid_by", currentUser.id);
-
+    setIsContributeDialogOpen(false);
     const result = await addNewContribution(formData, selectedExpense.id);
 
     if (!result.success) {
@@ -271,9 +270,6 @@ export default function ExpensesPage() {
     }
 
     await fetchExpensesData();
-
-    // Close the dialog
-    setIsContributeDialogOpen(false);
   };
 
   const toggleUserSelection = (userId: string) => {
