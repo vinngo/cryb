@@ -86,6 +86,7 @@ export default function ExpensesPage() {
   const [contributionAmount, setContributionAmount] = useState("");
   const [contributionNote, setContributionNote] = useState("");
   const [paidBy, setPaidBy] = useState<string>("");
+  const [submitting, setSubmitting] = useState(false);
   const { toast } = useToast();
 
   // Add state for contributions
@@ -201,7 +202,6 @@ export default function ExpensesPage() {
 
   const addExpense = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-
     if (!user?.house_id) {
       console.error("User is not part of a house");
       return;
@@ -222,8 +222,9 @@ export default function ExpensesPage() {
     formData.set("split_between", JSON.stringify(selectedUsers));
 
     //call server action using formData...
-
+    setSubmitting(true);
     const result = await addNewExpense(formData, user?.house_id);
+    setSubmitting(false);
 
     if (!result.success) {
       throw new Error(result.error || "Failed to add expense");
@@ -863,7 +864,10 @@ export default function ExpensesPage() {
                 title="No expenses yet"
                 description="Add your first expense to start tracking"
                 action={
-                  <Button onClick={() => setIsDialogOpen(true)}>
+                  <Button
+                    disabled={submitting}
+                    onClick={() => setIsDialogOpen(true)}
+                  >
                     <Plus className="mr-2 h-4 w-4" />
                     Add Expense
                   </Button>
