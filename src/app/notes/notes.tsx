@@ -47,6 +47,7 @@ import {
 } from "./actions";
 import { useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/empty-state";
+import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
 
 export interface Option {
@@ -72,11 +73,11 @@ export default function NotesPage() {
   const [pollOptions, setPollOptions] = useState<Option[]>([
     { id: 0, text: "Type your answer" },
   ]);
+  const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isMultChoice, setIsMultChoice] = useState(false);
   const [duration, setDuration] = useState("24 hours");
-
   const searchParams = useSearchParams();
   const action = searchParams.get("action");
   // Get current user (in a real app, this would come from auth)
@@ -125,6 +126,15 @@ export default function NotesPage() {
 
   const addPoll = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (pollOptions.length < 2) {
+      toast({
+        title: "Error",
+        description: "Poll must have at least two options",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const formData = new FormData(e.target as HTMLFormElement);
     formData.set("mult_choice", isMultChoice ? "true" : "false");
 
