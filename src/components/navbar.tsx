@@ -95,12 +95,12 @@ export default function Navbar() {
 
   // Show dialog if user is logged in but not in a house/group
   useEffect(() => {
-    if (user && !user.house_id) {
+    if (user && !user.house_id && pathname !== "/profile") {
       setShowHouseDialog(true);
     } else {
       setShowHouseDialog(false);
     }
-  }, [user]);
+  }, [user, pathname]);
 
   const routes = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -120,14 +120,16 @@ export default function Navbar() {
         onOpenChange={() => {}} // Prevent closing by clicking outside or pressing ESC
         modal
       >
-        <DialogContent
-          className="max-w-sm mx-auto text-center flex flex-col items-center no-dialog-close"
-        >
+        <DialogContent className="max-w-sm mx-auto text-center flex flex-col items-center no-dialog-close">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold mb-2">Welcome to Cryb!</DialogTitle>
+            <DialogTitle className="text-2xl font-bold mb-2">
+              Welcome to Cryb!
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-2 mb-2">
-            <p className="text-base font-medium">You are not part of a house yet.</p>
+            <p className="text-base font-medium">
+              You are not part of a house yet.
+            </p>
             <p className="text-sm text-muted-foreground">
               Please create a new house or join an existing one to continue.
             </p>
@@ -138,7 +140,7 @@ export default function Navbar() {
               <Button
                 onClick={() => {
                   setShowHouseDialog(false);
-                  router.push("/create-house");
+                  router.push("/profile?action=create-house");
                 }}
                 className="w-1/2 rounded-md py-2 text-base"
               >
@@ -148,7 +150,7 @@ export default function Navbar() {
                 variant="outline"
                 onClick={() => {
                   setShowHouseDialog(false);
-                  router.push("/join-house");
+                  router.push("/profile?action=join-house");
                 }}
                 className="w-1/2 rounded-md py-2 text-base"
               >
@@ -185,7 +187,7 @@ export default function Navbar() {
                   "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
                   pathname === route.href
                     ? "text-primary"
-                    : "text-muted-foreground"
+                    : "text-muted-foreground",
                 )}
               >
                 <route.icon className="h-4 w-4" />
@@ -278,7 +280,7 @@ export default function Navbar() {
                           "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
                           pathname === route.href
                             ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground"
+                            : "text-muted-foreground",
                         )}
                         onClick={() => setIsMenuOpen(false)}
                       >
