@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -35,11 +35,19 @@ import { useRulesStore } from "@/lib/stores/rulesStore";
 import { useUserStore } from "@/lib/stores/usersStore";
 import { useShoppingListStore } from "@/lib/stores/useShoppingListStore";
 import { usePollStore } from "@/lib/stores/pollsStore";
-import { useEffect } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 export default function Navbar() {
   const pathname = usePathname();
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showHouseDialog, setShowHouseDialog] = useState(false);
 
   const { fetchDashboardData } = useDashboardStore();
   const { fetchChoresData } = useChoreStore();
@@ -85,48 +93,84 @@ export default function Navbar() {
     pathname,
   ]);
 
+  // Show dialog if user is logged in but not in a house/group
+  useEffect(() => {
+    if (user && !user.house_id && pathname !== "/profile") {
+      setShowHouseDialog(true);
+    } else {
+      setShowHouseDialog(false);
+    }
+  }, [user, pathname]);
+
   const routes = [
-    {
-      name: "Dashboard",
-      href: "/dashboard",
-      icon: Home,
-    },
-    {
-      name: "Chores",
-      href: "/chores",
-      icon: ClipboardList,
-    },
-    {
-      name: "Expenses",
-      href: "/expenses",
-      icon: DollarSign,
-    },
-    {
-      name: "Shopping List",
-      href: "/shopping-list",
-      icon: ShoppingBasket,
-    },
-    {
-      name: "Notes",
-      href: "/notes",
-      icon: FileText,
-    },
-    {
-      name: "House Rules",
-      href: "/house-rules",
-      icon: Users,
-    },
-    {
-      name: "Calendar",
-      href: "/calendar",
-      icon: CalendarDays,
-    },
+    { name: "Dashboard", href: "/dashboard", icon: Home },
+    { name: "Chores", href: "/chores", icon: ClipboardList },
+    { name: "Expenses", href: "/expenses", icon: DollarSign },
+    { name: "Shopping List", href: "/shopping-list", icon: ShoppingBasket },
+    { name: "Notes", href: "/notes", icon: FileText },
+    { name: "House Rules", href: "/house-rules", icon: Users },
+    { name: "Calendar", href: "/calendar", icon: CalendarDays },
   ];
 
   return (
     <>
+      {/* House/Group Dialog */}
+      <Dialog
+        open={showHouseDialog}
+        onOpenChange={() => {}} // Prevent closing by clicking outside or pressing ESC
+        modal
+      >
+        <DialogContent className="max-w-sm mx-auto text-center flex flex-col items-center no-dialog-close">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold mb-2">
+              Welcome to Cryb!
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2 mb-2">
+            <p className="text-base font-medium">
+              You are not part of a house yet.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Please create a new house or join an existing one to continue.
+            </p>
+          </div>
+          <div className="w-full border-t border-muted-foreground/20 my-2" />
+          <DialogFooter className="w-full mt-2">
+            <div className="flex flex-row gap-3 w-full justify-between">
+              <Button
+                onClick={() => {
+                  setShowHouseDialog(false);
+                  router.push("/profile?action=create-house");
+                }}
+                className="w-1/2 rounded-md py-2 text-base"
+              >
+                Create House
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowHouseDialog(false);
+                  router.push("/profile?action=join-house");
+                }}
+                className="w-1/2 rounded-md py-2 text-base"
+              >
+                Join House
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Hide the close (X) button in the dialog */}
+      <style jsx global>{`
+        .no-dialog-close button[aria-label="Close"] {
+          display: none !important;
+        }
+      `}</style>
+
       <header className="sticky top-0 z-10 w-full border-b bg-background">
         <div className="w-full max-w-7xl mx-auto flex h-16 items-center justify-between px-4">
+          {/* Logo */}
           <div className="flex items-center gap-2">
             <Link href="/dashboard" className="flex items-center gap-2">
               <span className="text-xl font-bold">cryb</span>
@@ -152,7 +196,9 @@ export default function Navbar() {
             ))}
           </nav>
 
+          {/* User & Mobile Menu */}
           <div className="flex items-center gap-4">
+            {/* User Dropdown (Desktop) */}
             <div className="hidden md:flex items-center gap-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -162,7 +208,7 @@ export default function Navbar() {
                   >
                     <Avatar className="h-8 w-8">
                       <AvatarFallback>
-                        {user?.display_name.charAt(0)}
+                        {user?.display_name?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                   </Button>
@@ -206,6 +252,7 @@ export default function Navbar() {
               </SheetTrigger>
               <SheetContent side="right" className="p-0">
                 <div className="h-full flex flex-col">
+                  {/* Mobile User Info */}
                   <div className="p-4 border-b flex items-center gap-2">
                     <Avatar className="h-8 w-8">
                       <AvatarImage
@@ -213,7 +260,7 @@ export default function Navbar() {
                         alt={user?.display_name}
                       />
                       <AvatarFallback>
-                        {user?.display_name.charAt(0)}
+                        {user?.display_name?.charAt(0)}
                       </AvatarFallback>
                     </Avatar>
                     <div>
@@ -223,6 +270,7 @@ export default function Navbar() {
                       </p>
                     </div>
                   </div>
+                  {/* Mobile Navigation */}
                   <nav className="flex-1 p-4 space-y-2">
                     {routes.map((route) => (
                       <Link
@@ -241,6 +289,7 @@ export default function Navbar() {
                       </Link>
                     ))}
                   </nav>
+                  {/* Mobile Logout */}
                   <div className="p-4 border-t">
                     <Button
                       variant="outline"
