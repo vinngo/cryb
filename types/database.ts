@@ -1,6 +1,7 @@
 export interface User {
   id: string;
   display_name: string;
+  email: string;
   house_id: string;
   created_at: Date;
 }
