@@ -24,6 +24,12 @@ export const useRootStore = create<RootStoreState>((set) => ({
 
   async fetchCoreData() {
     set({ loading: true, error: null });
+
+    if (useRootStore.getState().initialized) {
+      set({ loading: false, error: null });
+      return;
+    }
+
     try {
       const {
         data: { user },
@@ -40,6 +46,7 @@ export const useRootStore = create<RootStoreState>((set) => ({
       if (!appUser || appUserError) {
         throw new Error("Failed to fetch user data");
       }
+      console.log("got app user: ", appUser);
       const [houseRes, memberRes] = await Promise.all([
         supabase.from("houses").select("*").eq("id", appUser.house_id).single(),
         supabase

@@ -52,6 +52,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { useExpenseStore } from "@/lib/stores/expensesStore";
+import { useRootStore } from "@/lib/stores/rootStore";
 import { Contribution, Expense } from "../../../types/database";
 import { addNewExpense, addNewContribution } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -62,13 +63,12 @@ export default function ExpensesPage() {
 
   const {
     expenses: expensesData,
-    members,
-    user,
     contributions: contributionsData,
     loading,
     fetchExpensesData,
   } = useExpenseStore();
 
+  const { user, houseMembers } = useRootStore();
   // Check if user has a house
   const hasHouse = user?.house_id != null;
 
@@ -142,7 +142,7 @@ export default function ExpensesPage() {
 
   // Calculate balances
   const balances = useMemo(() => {
-    const calculatedBalances = members.map((member) => {
+    const calculatedBalances = houseMembers?.map((member) => {
       let balance = 0;
 
       // Calculate what this user owes to others
@@ -198,7 +198,7 @@ export default function ExpensesPage() {
     });
 
     return calculatedBalances;
-  }, [expenses, members, contributions]);
+  }, [expenses, houseMembers, contributions]);
 
   const addExpense = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -367,7 +367,7 @@ export default function ExpensesPage() {
                         <SelectValue placeholder="Select person" />
                       </SelectTrigger>
                       <SelectContent>
-                        {members.map((user) => (
+                        {houseMembers?.map((user) => (
                           <SelectItem key={user.user_id} value={user.user_id}>
                             {user.name}
                           </SelectItem>
@@ -408,8 +408,8 @@ export default function ExpensesPage() {
                   <div className="space-y-2">
                     <Label>Split With</Label>
                     <div className="border rounded-md p-4 space-y-2">
-                      {members
-                        .filter((user) => user.user_id !== paidBy)
+                      {houseMembers
+                        ?.filter((user) => user.user_id !== paidBy)
                         .map((user) => (
                           <div
                             key={user.user_id}
@@ -566,7 +566,7 @@ export default function ExpensesPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {balances.map(({ user, balance }) => (
+                  {balances?.map(({ user, balance }) => (
                     <div
                       key={user.user_id}
                       className="flex items-center justify-between"
@@ -657,7 +657,7 @@ export default function ExpensesPage() {
                     <span className="font-medium">Net Balance</span>
                     <span
                       className={`font-bold ${
-                        (balances.find(
+                        (balances?.find(
                           (b) => b.user.user_id === currentUser?.id,
                         )?.balance ?? 0 >= 0)
                           ? "text-red-500"
@@ -666,11 +666,13 @@ export default function ExpensesPage() {
                     >
                       $
                       {Math.abs(
-                        balances.find((b) => b.user.user_id === currentUser?.id)
-                          ?.balance ?? 0,
+                        balances?.find(
+                          (b) => b.user.user_id === currentUser?.id,
+                        )?.balance ?? 0,
                       ).toFixed(2)}
-                      {(balances.find((b) => b.user.user_id === currentUser?.id)
-                        ?.balance ?? 0) >= 0
+                      {(balances?.find(
+                        (b) => b.user.user_id === currentUser?.id,
+                      )?.balance ?? 0) >= 0
                         ? " (you are owed)"
                         : " (you owe)"}
                     </span>
@@ -696,12 +698,13 @@ export default function ExpensesPage() {
             {expenses.length > 0 ? (
               <div className="space-y-4">
                 {expenses.map((expense) => {
-                  const paidBy = members.find(
+                  const paidBy = houseMembers?.find(
                     (user) => user.user_id === expense.paid_by,
                   );
                   const sharedWith = expense.split_between
                     .map(
-                      (id) => members.find((user) => user.user_id === id)?.name,
+                      (id) =>
+                        houseMembers?.find((user) => user.user_id === id)?.name,
                     )
                     .join(", ");
 
@@ -825,7 +828,7 @@ export default function ExpensesPage() {
                             {contributions
                               .filter((c) => c.expense_id === expense.id)
                               .map((contribution) => {
-                                const contributor = members.find(
+                                const contributor = houseMembers?.find(
                                   (u) => u.user_id === contribution.user_id,
                                 );
                                 return (

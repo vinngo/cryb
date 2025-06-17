@@ -1,60 +1,65 @@
 "use client";
 
-import { User, HouseRule } from "../../../types/database";
+import { HouseRule } from "../../../types/database";
 import { supabase } from "../supabase/client";
+import { useRootStore } from "./rootStore";
 import { create } from "zustand";
 
 interface RulesData {
-  user: User | null;
   rules: HouseRule | null;
   loading: boolean;
+  initialized: boolean;
   error: string | null;
   fetchRulesData: () => Promise<void>;
 }
 
 export const useRulesStore = create<RulesData>((set) => ({
-  user: null,
   rules: null,
-  loading: true,
+  loading: false,
+  initialized: false,
   error: null,
 
   async fetchRulesData() {
     try {
-      set({ loading: true, error: null });
+      set({ loading: true });
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const rootStore = useRootStore.getState();
 
-      if (userError || !user) throw new Error("User not authenticated!");
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
 
-      const { data: appUser } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const { user: appUser } = useRootStore.getState();
 
-      if (!appUser?.house_id) {
-        set({
-          user: appUser,
-          rules: null,
-          loading: false,
-        });
+      if (useRulesStore.getState().initialized) {
+        set({ loading: false, error: null });
         return;
       }
 
-      const { data: rulesData, error: rulesError } = await supabase
-        .from("house_rules")
-        .select("*")
-        .eq("house_id", appUser.house_id);
+      if (!appUser?.house_id) {
+        set({
+          rules: null,
+          loading: false,
+          initialized: true,
+          error: null,
+        });
+      }
 
-      if (rulesError) throw new Error("Failed to fetch rules");
+      const { data: rulesData, error: rulesError } = await supabase
+        .from("rules")
+        .select("*")
+        .eq("house_id", appUser?.house_id)
+        .single();
+
+      if (rulesError) {
+        throw new Error(rulesError.message);
+      }
 
       set({
-        user: appUser,
-        rules: rulesData.length > 0 ? (rulesData[0] as HouseRule) : null,
+        rules: rulesData || null,
         loading: false,
+        initialized: true,
+        error: null,
       });
     } catch (e) {
       const message =

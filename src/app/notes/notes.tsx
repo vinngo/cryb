@@ -49,6 +49,7 @@ import { useSearchParams } from "next/navigation";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
 import Link from "next/link";
+import { useRootStore } from "@/lib/stores/rootStore";
 
 export interface Option {
   id: number;
@@ -58,11 +59,10 @@ export interface Option {
 export default function NotesPage() {
   const {
     notes: notesData,
-    user,
-    members,
     loading: notesLoading,
     fetchNotesData,
   } = useNotesStore();
+  const { user, houseMembers: members } = useRootStore.getState();
   const [notes, setNotes] = useState(notesData);
   const {
     polls: pollsData,
@@ -414,7 +414,7 @@ export default function NotesPage() {
               {notes
                 .filter((note) => note.is_pinned)
                 .map((note) => {
-                  const author = members.find(
+                  const author = members?.find(
                     (user) => user.user_id === note.created_by,
                   );
                   return (
@@ -482,7 +482,7 @@ export default function NotesPage() {
             {notes
               .filter((note) => !note.is_pinned)
               .map((note) => {
-                const author = members.find(
+                const author = members?.find(
                   (user) => user.user_id === note.created_by,
                 );
                 return (
