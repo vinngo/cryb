@@ -14,9 +14,9 @@ import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
 import { PollProps } from "../../../types/poll";
 import { PollOption, PollVote } from "../../../types/database";
-import { useUserStore } from "@/lib/stores/usersStore";
 import { votePoll, removeVote, removeVotes } from "./actions";
 import { useState, useEffect } from "react";
+import { useRootStore } from "@/lib/stores/rootStore";
 
 export default function Poll({
   id,
@@ -26,7 +26,7 @@ export default function Poll({
   votes: initialVotesData,
   expires_at,
 }: PollProps) {
-  const { user } = useUserStore();
+  const { user } = useRootStore();
 
   const now = new Date();
 
