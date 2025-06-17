@@ -68,6 +68,7 @@ export interface Contribution {
   expense_id: string;
   user_id: string;
   amount: number;
+  house_id: string;
   note?: string;
 }
 
