@@ -48,8 +48,15 @@ const categories = [
 ];
 
 export default function ShoppingList() {
-  const { items: shoppingListItems } = useShoppingListStore();
-  const { user } = useUserStore();
+  const { items: shoppingListItems, error } = useShoppingListStore();
+  const { user } = useUserStore.getState();
+
+  useEffect(() => {
+    console.log(shoppingListItems);
+    if (error) {
+      console.log(error);
+    }
+  }, [error, shoppingListItems]);
 
   const [items, setItems] = useState(shoppingListItems);
   const [newItem, setNewItem] = useState({

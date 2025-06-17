@@ -1,68 +1,59 @@
 import { create } from "zustand";
 import { supabase } from "../supabase/client";
-import { User, Chore, HouseMember } from "../../../types/database";
+import { Chore } from "../../../types/database";
+import { useRootStore } from "./rootStore";
 
 interface ChoresData {
-  user: User | null;
   chores: Chore[];
-  members: HouseMember[];
   loading: boolean;
   error: string | null;
+  initialized: boolean;
   fetchChoresData: () => Promise<void>;
 }
 
 export const useChoreStore = create<ChoresData>((set) => ({
-  user: null,
   chores: [],
-  members: [],
   loading: true,
   error: null,
+  initialized: false,
 
   async fetchChoresData() {
     try {
-      set({ loading: true, error: null });
+      const rootStore = useRootStore.getState();
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
 
-      if (userError || !user) throw new Error("User not authenticated");
+      const { user } = useRootStore.getState();
 
-      const { data: appUser } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      if (useChoreStore.getState().initialized) {
+        set({ loading: false });
+        return;
+      }
 
-      if (!appUser?.house_id) {
+      if (!user?.house_id) {
         set({
-          user: appUser,
           chores: [],
-          members: [],
           loading: false,
+          initialized: true,
         });
         return;
       }
 
-      const [choresRes, membersRes] = await Promise.all([
-        supabase.from("chores").select("*").eq("house_id", appUser.house_id),
-        supabase
-          .from("house_members")
-          .select("*")
-          .eq("house_id", appUser.house_id),
-      ]);
+      const { data: choresData, error: choresError } = await supabase
+        .from("chores")
+        .select("*")
+        .eq("house_id", user.house_id);
 
-      if (choresRes.error)
-        console.error("chores error:", choresRes.error.message);
-      if (membersRes.error)
-        console.error("members error:", membersRes.error.message);
+      if (choresError) {
+        throw new Error("Failed to load chores");
+      }
 
       set({
-        user: appUser,
-        chores: choresRes.data || [],
-        members: membersRes.data || [],
+        chores: choresData || [],
         loading: false,
+        initialized: true,
       });
     } catch (error) {
       const message =

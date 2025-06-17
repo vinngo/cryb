@@ -44,6 +44,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useChoreStore } from "@/lib/stores/choresStore";
+import { useRootStore } from "@/lib/stores/rootStore";
 import addNewChore, { updateChore } from "./actions";
 import { Chore } from "../../../types/database";
 import { EmptyState } from "@/components/empty-state";
@@ -54,12 +55,10 @@ export default function ChoresPage() {
   const searchParams = useSearchParams();
   const {
     chores: choresData,
-    members,
-    user,
-    loading,
+    loading: choresLoading,
     fetchChoresData,
   } = useChoreStore();
-
+  const { user, houseMembers, loading: rootLoading } = useRootStore();
   // Local state
   const [chores, setChores] = useState(choresData);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -165,7 +164,7 @@ export default function ChoresPage() {
             Manage and track household chores
           </p>
         </div>
-        {!loading && hasHouse && (
+        {!(choresLoading || rootLoading) && hasHouse && (
           <Dialog
             open={isDialogOpen}
             onOpenChange={(open) => {
@@ -204,7 +203,7 @@ export default function ChoresPage() {
                         <SelectValue placeholder="Select person" />
                       </SelectTrigger>
                       <SelectContent>
-                        {members.map((user) => (
+                        {houseMembers?.map((user) => (
                           <SelectItem key={user.user_id} value={user.user_id}>
                             {user.name}
                           </SelectItem>
@@ -253,7 +252,7 @@ export default function ChoresPage() {
       </div>
 
       <div className="grid gap-4">
-        {loading ? (
+        {choresLoading || rootLoading ? (
           <>
             <Skeleton className="w-full h-[280px] mb-4" />
             <Skeleton className="w-full h-[280px]" />
@@ -287,7 +286,7 @@ export default function ChoresPage() {
                   {chores
                     .filter((chore) => !chore.completed)
                     .map((chore) => {
-                      const assignedTo = members.find(
+                      const assignedTo = houseMembers?.find(
                         (user) => user.user_id === chore.assigned_to,
                       );
                       return (
@@ -359,7 +358,7 @@ export default function ChoresPage() {
                   {chores
                     .filter((chore) => chore.completed)
                     .map((chore) => {
-                      const assignedTo = members.find(
+                      const assignedTo = houseMembers?.find(
                         (user) => user.user_id === chore.assigned_to,
                       );
                       return (

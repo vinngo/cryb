@@ -24,12 +24,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Edit2 } from "lucide-react";
 import { useRulesStore } from "@/lib/stores/rulesStore";
+import { useRootStore } from "@/lib/stores/rootStore";
 import { saveHouseRules } from "./actions";
 import { format } from "date-fns";
 
 export default function HouseRulesPage() {
-  const { user, rules: rulesData, fetchRulesData, loading } = useRulesStore();
+  const { rules: rulesData, fetchRulesData, loading } = useRulesStore();
   const [isEditing, setIsEditing] = useState(false);
+  const { user } = useRootStore();
 
   useEffect(() => {
     console.log(user);

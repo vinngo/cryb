@@ -2,10 +2,12 @@ import { create } from "zustand";
 import { supabase } from "../supabase/client";
 import { PollVote, PollOption, Poll } from "../../../types/database";
 import { PollProps as PollObject } from "../../../types/poll";
+import { useRootStore } from "./rootStore";
 
 interface PollsData {
   polls: PollObject[];
   loading: boolean;
+  initialized: boolean;
   error: string | null;
   fetchPollData: () => Promise<void>;
 }
@@ -26,19 +28,20 @@ async function fetchPollsForHouse(house_id: string): Promise<PollsResult> {
       .eq("house_id", house_id);
 
     if (pollError) throw pollError;
-    if (!polls || polls.length === 0) return { polls: [], options: [], votes: [] };
+    if (!polls || polls.length === 0)
+      return { polls: [], options: [], votes: [] };
 
     // Get all poll options for all polls in the house
     const { data: options, error: optionsError } = await supabase
       .from("poll_options")
       .select("*")
-      .in('poll_id', polls.map(poll => poll.id));
+      .in(
+        "poll_id",
+        polls.map((poll) => poll.id),
+      );
 
     if (optionsError) {
-      console.error(
-        `Error fetching options for polls:`,
-        optionsError,
-      );
+      console.error(`Error fetching options for polls:`, optionsError);
       return { polls, options: [], votes: [] };
     }
 
@@ -46,17 +49,20 @@ async function fetchPollsForHouse(house_id: string): Promise<PollsResult> {
     const { data: votes, error: votesError } = await supabase
       .from("poll_votes")
       .select("*")
-      .in('poll_id', polls.map(poll => poll.id));
+      .in(
+        "poll_id",
+        polls.map((poll) => poll.id),
+      );
 
     if (votesError) {
       console.error(`Error fetching votes for polls:`, votesError);
       return { polls, options: options || [], votes: [] };
     }
 
-    return { 
-      polls: polls || [], 
-      options: options || [], 
-      votes: votes || [] 
+    return {
+      polls: polls || [],
+      options: options || [],
+      votes: votes || [],
     };
   } catch (e) {
     console.error(e);
@@ -67,29 +73,30 @@ async function fetchPollsForHouse(house_id: string): Promise<PollsResult> {
 export const usePollStore = create<PollsData>((set) => ({
   polls: [],
   loading: false,
+  initialized: false,
   error: null,
   fetchPollData: async () => {
     try {
       set({ loading: true });
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
-      if (!user || userError) throw new Error("User not authenticated!");
 
-      const { data: appUser, error: appUserError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const rootStore = useRootStore.getState();
 
-      if (appUserError) throw new Error("User not found!");
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
 
-      if (!appUser.house_id) {
+      const { user: appUser } = useRootStore.getState();
+
+      if (usePollStore.getState().initialized) {
+        set({ loading: false });
+        return;
+      }
+
+      if (!appUser?.house_id) {
         set({
           polls: [],
           loading: false,
-          error: "User not assigned to a house!",
+          initialized: true,
         });
         return;
       }
@@ -105,9 +112,7 @@ export const usePollStore = create<PollsData>((set) => ({
           (option) => option.poll_id === poll.id,
         );
 
-        const poll_votes = votes.filter(
-          (vote) => vote.poll_id === poll.id,
-        );
+        const poll_votes = votes.filter((vote) => vote.poll_id === poll.id);
 
         // Consolidate into one PollObject
         const pollObject: PollObject = {
@@ -126,6 +131,7 @@ export const usePollStore = create<PollsData>((set) => ({
       set({
         polls: pollData,
         loading: false,
+        initialized: true,
         error: null,
       });
     } catch (error) {
