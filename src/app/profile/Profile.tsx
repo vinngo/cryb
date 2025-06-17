@@ -30,7 +30,7 @@ import { Separator } from "@/components/ui/separator";
 import { AlertCircle, Bell, Copy, Home, LogOut, User } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { useUserStore } from "@/lib/stores/usersStore";
+import { useRootStore } from "@/lib/stores/rootStore";
 import { useSearchParams } from "next/navigation";
 import {
   updateProfile,
@@ -49,8 +49,8 @@ export default function ProfilePage() {
     user: userData,
     email: emailData,
     house,
-    fetchUserData,
-  } = useUserStore();
+    fetchCoreForce,
+  } = useRootStore();
 
   // Get current user (in a real app, this would come from auth)
   const [currentUser, setCurrentUser] = useState(userData);
@@ -95,7 +95,7 @@ export default function ProfilePage() {
       throw new Error(result.error || "Failed to update profile!");
     }
 
-    await fetchUserData();
+    await fetchCoreForce();
 
     toast({
       title: "Profile updated",
@@ -120,14 +120,14 @@ export default function ProfilePage() {
     const { success } = await updatePassword(formData);
 
     if (success) {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "Password updated",
         description: "Your password has been changed successfully.",
         variant: "success",
       });
     } else {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "Update Failed",
         description: "Your password was not changed due to some error",
@@ -147,14 +147,14 @@ export default function ProfilePage() {
     const { success } = await joinExistingHouse(formData);
 
     if (success) {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "House joined",
         description: "You have successfully joined the house.",
         variant: "success",
       });
     } else {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "Joining Failed",
         description: "There was an error joining the house.",
@@ -173,14 +173,14 @@ export default function ProfilePage() {
     const { success } = await createNewHouse(formData);
 
     if (success) {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "House created",
         description: `Your new house "${houseName}" has been created.`,
         variant: "success",
       });
     } else {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "House not created",
         description: `Your new house was not created due to some error`,
@@ -195,14 +195,14 @@ export default function ProfilePage() {
   const handleLeaveHouse = async () => {
     const { success } = await leaveHouse();
     if (success) {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "House left",
         description: "You have left the house.",
         variant: "success",
       });
     } else {
-      await fetchUserData();
+      await fetchCoreForce();
       toast({
         title: "House not left",
         description: "You were not able to leave the house due to some error.",

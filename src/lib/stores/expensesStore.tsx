@@ -10,6 +10,7 @@ interface ExpensesData {
   initialized: boolean;
   error: string | null;
   fetchExpensesData: () => Promise<void>;
+  fetchExpensesForce: () => Promise<void>;
 }
 
 export const useExpenseStore = create<ExpensesData>((set) => ({
@@ -59,6 +60,63 @@ export const useExpenseStore = create<ExpensesData>((set) => ({
           .eq("user_id", user.id)
           .eq("expenses.house_id", user.house_id),
         ,
+      ]);
+
+      if (expensesRes.error || contributionsRes.error) {
+        throw new Error("Failed to load expenses");
+      }
+
+      set({
+        expenses: expensesRes.data,
+        contributions: contributionsRes.data,
+        loading: false,
+        initialized: true,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to load expenses";
+
+      set({
+        error: message,
+        loading: false,
+      });
+    }
+  },
+
+  async fetchExpensesForce() {
+    try {
+      set({ loading: true, error: null });
+
+      const rootStore = useRootStore.getState();
+
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
+
+      const { user } = useRootStore.getState();
+      // Force refresh should ignore initialized state
+      
+      if (!user?.house_id) {
+        set({
+          expenses: [],
+          contributions: [],
+          loading: false,
+          initialized: true,
+        });
+        return;
+      }
+
+      const [expensesRes, contributionsRes] = await Promise.all([
+        supabase
+          .from("expenses")
+          .select("*")
+          .eq("house_id", user.house_id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("contributions")
+          .select("*, expenses!inner(*)")
+          .eq("user_id", user.id)
+          .eq("expenses.house_id", user.house_id),
       ]);
 
       if (expensesRes.error || contributionsRes.error) {
