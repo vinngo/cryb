@@ -72,6 +72,10 @@ export default function ChoresPage() {
   // Initial data fetch
   useEffect(() => {
     fetchChoresData();
+
+    return () => {
+      useChoreStore.getState().cleanupRealtimeSubscription();
+    };
   }, [fetchChoresData]);
 
   // Keep local chores state in sync with store data
