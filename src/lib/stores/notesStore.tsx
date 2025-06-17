@@ -9,6 +9,7 @@ interface NotesData {
   initialized: boolean;
   error: string | null;
   fetchNotesData: () => Promise<void>;
+  fetchNotesForce: () => Promise<void>;
 }
 
 export const useNotesStore = create<NotesData>((set) => ({
@@ -33,6 +34,53 @@ export const useNotesStore = create<NotesData>((set) => ({
         set({ loading: false });
         return;
       }
+
+      if (!user?.house_id) {
+        set({
+          notes: [],
+          loading: false,
+          initialized: true,
+        });
+        return;
+      }
+
+      const [membersRes, notesRes] = await Promise.all([
+        supabase
+          .from("house_members")
+          .select("*")
+          .eq("house_id", user.house_id),
+        supabase.from("notes").select("*").eq("house_id", user.house_id),
+      ]);
+
+      if (membersRes.error) throw new Error("Failed to fetch members data!");
+      if (notesRes.error) throw new Error("Failed to fetch notes data!");
+
+      set({
+        notes: notesRes.data || [],
+        loading: false,
+      });
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "Failed to fetch notes data!";
+
+      set({
+        error: message,
+        loading: false,
+      });
+    }
+  },
+
+  async fetchNotesForce() {
+    try {
+      set({ loading: true, error: null });
+
+      const rootStore = useRootStore.getState();
+
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
+
+      const { user } = useRootStore.getState();
 
       if (!user?.house_id) {
         set({

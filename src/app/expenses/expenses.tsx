@@ -66,6 +66,7 @@ export default function ExpensesPage() {
     contributions: contributionsData,
     loading,
     fetchExpensesData,
+    fetchExpensesForce,
   } = useExpenseStore();
 
   const { user, houseMembers } = useRootStore();
@@ -231,7 +232,7 @@ export default function ExpensesPage() {
       throw new Error(result.error || "Failed to add expense");
     }
 
-    await fetchExpensesData();
+    await fetchExpensesForce();
 
     setDate(undefined);
     setPaidBy("");
@@ -269,7 +270,7 @@ export default function ExpensesPage() {
       throw new Error(result.error || "Failed to add contribution!");
     }
 
-    await fetchExpensesData();
+    await fetchExpensesForce();
   };
 
   const toggleUserSelection = (userId: string) => {

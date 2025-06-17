@@ -29,7 +29,7 @@ import { saveHouseRules } from "./actions";
 import { format } from "date-fns";
 
 export default function HouseRulesPage() {
-  const { rules: rulesData, fetchRulesData, loading } = useRulesStore();
+  const { rules: rulesData, fetchRulesForce, loading } = useRulesStore();
   const [isEditing, setIsEditing] = useState(false);
   const { user } = useRootStore();
 
@@ -94,7 +94,7 @@ export default function HouseRulesPage() {
       }
 
       // Refresh rules data
-      await fetchRulesData();
+      await fetchRulesForce();
 
       setIsEditing(false);
     } catch (error) {

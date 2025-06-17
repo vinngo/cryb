@@ -60,14 +60,14 @@ export default function NotesPage() {
   const {
     notes: notesData,
     loading: notesLoading,
-    fetchNotesData,
+    fetchNotesForce,
   } = useNotesStore();
   const { user, houseMembers: members } = useRootStore.getState();
   const [notes, setNotes] = useState(notesData);
   const {
     polls: pollsData,
     loading: pollsLoading,
-    fetchPollData,
+    fetchPollsForce,
   } = usePollStore();
   const [polls, setPolls] = useState(pollsData);
   const [pollOptions, setPollOptions] = useState<Option[]>([
@@ -118,7 +118,7 @@ export default function NotesPage() {
       throw new Error(result?.error || "Failed to add note");
     }
 
-    await fetchNotesData();
+    await fetchNotesForce();
 
     setIsDialogOpen(false);
     setIsPinned(false);
@@ -149,7 +149,7 @@ export default function NotesPage() {
       console.error(result?.error || "Failed to add poll");
     }
 
-    await fetchPollData();
+    await fetchPollsForce();
 
     setIsDialogOpen(false);
     setIsPinned(false);
@@ -174,7 +174,7 @@ export default function NotesPage() {
         ),
       );
     }
-    await fetchNotesData();
+    await fetchNotesForce();
   };
 
   const deleteNote = async (id: string) => {
