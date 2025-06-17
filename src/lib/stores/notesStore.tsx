@@ -1,46 +1,44 @@
 import { create } from "zustand";
 import { supabase } from "../supabase/client";
-import { User, HouseMember, Note } from "../../../types/database";
+import { useRootStore } from "./rootStore";
+import { Note } from "../../../types/database";
 
 interface NotesData {
-  user: User | null;
-  members: HouseMember[];
   notes: Note[];
   loading: boolean;
+  initialized: boolean;
   error: string | null;
   fetchNotesData: () => Promise<void>;
 }
 
 export const useNotesStore = create<NotesData>((set) => ({
-  user: null,
-  members: [],
   notes: [],
   loading: true,
+  initialized: false,
   error: null,
 
   async fetchNotesData() {
     try {
       set({ loading: true, error: null });
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      const rootStore = useRootStore.getState();
 
-      if (userError || !user) throw new Error("User not authenticated!");
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
 
-      const { data: appUser } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single();
+      const { user } = useRootStore.getState();
 
-      if (!appUser?.house_id) {
+      if (useNotesStore.getState().initialized) {
+        set({ loading: false });
+        return;
+      }
+
+      if (!user?.house_id) {
         set({
-          user: appUser,
-          members: [],
           notes: [],
           loading: false,
+          initialized: true,
         });
         return;
       }
@@ -49,16 +47,14 @@ export const useNotesStore = create<NotesData>((set) => ({
         supabase
           .from("house_members")
           .select("*")
-          .eq("house_id", appUser.house_id),
-        supabase.from("notes").select("*").eq("house_id", appUser.house_id),
+          .eq("house_id", user.house_id),
+        supabase.from("notes").select("*").eq("house_id", user.house_id),
       ]);
 
       if (membersRes.error) throw new Error("Failed to fetch members data!");
       if (notesRes.error) throw new Error("Failed to fetch notes data!");
 
       set({
-        user: appUser,
-        members: membersRes.data || [],
         notes: notesRes.data || [],
         loading: false,
       });

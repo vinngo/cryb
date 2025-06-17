@@ -1,9 +1,10 @@
 import HouseRulesPage from "./houserules";
 import { Suspense } from "react";
+import SuspenseFallback from "@/components/suspense-fallback";
 
 export default function Page() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<SuspenseFallback page="House Rules" />}>
       <HouseRulesPage />
     </Suspense>
   );

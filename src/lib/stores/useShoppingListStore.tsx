@@ -1,10 +1,12 @@
 import { create } from "zustand";
 import { ShoppingListItem } from "../../../types/database";
-import { createClient } from "../supabase/client";
+import { supabase } from "../supabase/client";
+import { useRootStore } from "./rootStore";
 
 interface ShoppingListData {
   items: ShoppingListItem[];
   loading: boolean;
+  initialized: boolean;
   error: string | null;
   fetchShoppingListData: () => Promise<void>;
 }
@@ -12,31 +14,30 @@ interface ShoppingListData {
 export const useShoppingListStore = create<ShoppingListData>((set) => ({
   items: [],
   loading: false,
+  initialized: false,
   error: null,
   fetchShoppingListData: async () => {
     try {
       set({ loading: true });
+      const rootStore = useRootStore.getState();
 
-      const supabase = createClient();
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
 
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
+      const { user: appUser } = useRootStore.getState();
 
-      if (!user) throw new Error("user not found!");
-
-      const { data: appUser, error: appUserError } = await supabase
-        .from("users")
-        .select("*")
-        .eq("id", user.id)
-        .single();
-
-      if (appUserError) throw new Error(appUserError.message);
+      if (useShoppingListStore.getState().initialized) {
+        set({ loading: false, error: null });
+        return;
+      }
 
       if (!appUser?.house_id) {
         set({
           items: [],
           loading: false,
+          initialized: true,
+          error: null,
         });
         return;
       }
@@ -52,6 +53,7 @@ export const useShoppingListStore = create<ShoppingListData>((set) => ({
       set({
         items: shoppingListData || [],
         loading: false,
+        initialized: true,
         error: null,
       });
     } catch (e) {
