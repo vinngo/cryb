@@ -29,9 +29,18 @@ import { saveHouseRules } from "./actions";
 import { format } from "date-fns";
 
 export default function HouseRulesPage() {
-  const { rules: rulesData, fetchRulesForce, loading } = useRulesStore();
+  const {
+    rules: rulesData,
+    fetchRulesData,
+    fetchRulesForce,
+    loading,
+  } = useRulesStore();
   const [isEditing, setIsEditing] = useState(false);
   const { user } = useRootStore();
+
+  useEffect(() => {
+    fetchRulesData();
+  }, [fetchRulesData]);
 
   useEffect(() => {
     console.log(user);

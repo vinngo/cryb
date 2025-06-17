@@ -47,7 +47,7 @@ export const useRulesStore = create<RulesData>((set) => ({
       }
 
       const { data: rulesData, error: rulesError } = await supabase
-        .from("rules")
+        .from("house_rules")
         .select("*")
         .eq("house_id", appUser?.house_id)
         .single();
@@ -95,7 +95,7 @@ export const useRulesStore = create<RulesData>((set) => ({
       }
 
       const { data: rulesData, error: rulesError } = await supabase
-        .from("rules")
+        .from("house_rules")
         .select("*")
         .eq("house_id", appUser?.house_id)
         .single();
