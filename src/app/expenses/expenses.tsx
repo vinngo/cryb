@@ -66,17 +66,22 @@ export default function ExpensesPage() {
     contributions: contributionsData,
     loading,
     fetchExpensesData,
-    fetchExpensesForce,
   } = useExpenseStore();
 
   const { user, houseMembers } = useRootStore();
   // Check if user has a house
   const hasHouse = user?.house_id != null;
 
+  //initial fetch
   useEffect(() => {
     fetchExpensesData();
+    return () => {
+      useExpenseStore.getState().cleanupRealtimeExpenseSubscription();
+      useExpenseStore.getState().cleanupRealtimeContributionSubscription();
+    };
   }, [fetchExpensesData]);
 
+  //local state
   const [expenses, setExpenses] = useState(expensesData);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isContributeDialogOpen, setIsContributeDialogOpen] = useState(false);
@@ -88,6 +93,7 @@ export default function ExpensesPage() {
   const [contributionNote, setContributionNote] = useState("");
   const [paidBy, setPaidBy] = useState<string>("");
   const [submitting, setSubmitting] = useState(false);
+  //toast hook
   const { toast } = useToast();
 
   // Add state for contributions
@@ -97,6 +103,7 @@ export default function ExpensesPage() {
   // Get current user (in a real app, this would come from auth)
   const currentUser = user;
 
+  //effect for new expense action on mount
   useEffect(() => {
     // Check if there's an action parameter in the URL
     const action = searchParams.get("action");
@@ -105,10 +112,12 @@ export default function ExpensesPage() {
     }
   }, [searchParams]);
 
+  //sync expenses store
   useEffect(() => {
     setExpenses(expensesData);
   }, [expensesData]);
 
+  //sync contributions store
   useEffect(() => {
     setContributions(contributionsData);
   }, [contributionsData]);
@@ -232,8 +241,6 @@ export default function ExpensesPage() {
       throw new Error(result.error || "Failed to add expense");
     }
 
-    await fetchExpensesForce();
-
     setDate(undefined);
     setPaidBy("");
     setSelectedUsers([]);
@@ -258,19 +265,21 @@ export default function ExpensesPage() {
 
     if (!selectedExpense || !contributionAmount) return;
 
-    if (!currentUser) return;
+    if (!user) return;
 
     const formData = new FormData(e.currentTarget);
 
-    formData.set("paid_by", currentUser.id);
+    formData.set("paid_by", user.id);
     setIsContributeDialogOpen(false);
-    const result = await addNewContribution(formData, selectedExpense.id);
+    const result = await addNewContribution(
+      formData,
+      selectedExpense.id,
+      user.house_id,
+    );
 
     if (!result.success) {
       throw new Error(result.error || "Failed to add contribution!");
     }
-
-    await fetchExpensesForce();
   };
 
   const toggleUserSelection = (userId: string) => {
