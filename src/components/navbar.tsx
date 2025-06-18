@@ -291,11 +291,21 @@ export default function Navbar() {
                       </Link>
                     ))}
                   </nav>
-                  {/* Mobile Logout */}
+                  {/* Mobile Profile & Logout */}
                   <div className="p-4 border-t">
                     <Button
                       variant="outline"
                       className="w-full justify-start"
+                      asChild
+                    >
+                      <Link href="/profile">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start mt-2"
                       asChild
                     >
                       <Link href="/login">
