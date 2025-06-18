@@ -60,7 +60,7 @@ export default function NotesPage() {
   const {
     notes: notesData,
     loading: notesLoading,
-    fetchNotesForce,
+    fetchNotesData,
   } = useNotesStore();
   const { user, houseMembers: members } = useRootStore.getState();
   const [notes, setNotes] = useState(notesData);
@@ -84,6 +84,14 @@ export default function NotesPage() {
   const currentUser = user;
 
   useEffect(() => {
+    fetchNotesData();
+    return () => {
+      useNotesStore.getState().cleanupRealtimeNoteSubscription();
+    };
+  }, [fetchNotesData]);
+
+  useEffect(() => {
+    console.log("received changes!");
     setNotes(notesData);
   }, [notesData]);
 
@@ -117,8 +125,6 @@ export default function NotesPage() {
     if (!result?.success) {
       throw new Error(result?.error || "Failed to add note");
     }
-
-    await fetchNotesForce();
 
     setIsDialogOpen(false);
     setIsPinned(false);
@@ -174,15 +180,20 @@ export default function NotesPage() {
         ),
       );
     }
-    await fetchNotesForce();
   };
 
   const deleteNote = async (id: string) => {
+    // Store original notes for potential revert
+    const originalNotes = [...notes];
+
+    // Optimistic UI update
     setNotes(notes.filter((note) => note.id !== id));
+
     const { success } = await deleteNoteAction(id);
 
     if (!success) {
-      setNotes(notes.filter((note) => note.id !== id));
+      // Revert to original notes if deletion fails
+      setNotes(originalNotes);
     }
   };
 
