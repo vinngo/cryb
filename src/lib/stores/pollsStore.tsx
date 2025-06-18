@@ -10,6 +10,7 @@ interface PollsData {
   initialized: boolean;
   error: string | null;
   fetchPollData: () => Promise<void>;
+  fetchPollsForce: () => Promise<void>;
 }
 
 interface PollsResult {
@@ -91,6 +92,64 @@ export const usePollStore = create<PollsData>((set) => ({
         set({ loading: false });
         return;
       }
+
+      if (!appUser?.house_id) {
+        set({
+          polls: [],
+          loading: false,
+          initialized: true,
+        });
+        return;
+      }
+
+      const { polls, options, votes } = await fetchPollsForHouse(
+        appUser.house_id,
+      );
+
+      const pollData: PollObject[] = [];
+
+      for (const poll of polls) {
+        const poll_options = options.filter(
+          (option) => option.poll_id === poll.id,
+        );
+
+        const poll_votes = votes.filter((vote) => vote.poll_id === poll.id);
+
+        // Consolidate into one PollObject
+        const pollObject: PollObject = {
+          id: poll.id,
+          title: poll.question, // Changed from title to question based on Poll interface
+          multipleChoice: poll.multiple_choice,
+          options: poll_options,
+          votes: poll_votes,
+          created_at: poll.created_at,
+          expires_at: poll.expires_at,
+        };
+
+        pollData.push(pollObject);
+      }
+
+      set({
+        polls: pollData,
+        loading: false,
+        initialized: true,
+        error: null,
+      });
+    } catch (error) {
+      set({ loading: false, error: String(error) });
+    }
+  },
+  fetchPollsForce: async () => {
+    try {
+      set({ loading: true });
+
+      const rootStore = useRootStore.getState();
+
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
+
+      const { user: appUser } = useRootStore.getState();
 
       if (!appUser?.house_id) {
         set({

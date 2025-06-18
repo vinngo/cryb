@@ -11,6 +11,7 @@ interface RulesData {
   initialized: boolean;
   error: string | null;
   fetchRulesData: () => Promise<void>;
+  fetchRulesForce: () => Promise<void>;
 }
 
 export const useRulesStore = create<RulesData>((set) => ({
@@ -46,7 +47,55 @@ export const useRulesStore = create<RulesData>((set) => ({
       }
 
       const { data: rulesData, error: rulesError } = await supabase
-        .from("rules")
+        .from("house_rules")
+        .select("*")
+        .eq("house_id", appUser?.house_id)
+        .single();
+
+      if (rulesError) {
+        throw new Error(rulesError.message);
+      }
+
+      set({
+        rules: rulesData || null,
+        loading: false,
+        initialized: true,
+        error: null,
+      });
+    } catch (e) {
+      const message =
+        e instanceof Error ? e.message : "Failed to fetch house rules";
+
+      set({
+        error: message,
+        loading: false,
+      });
+    }
+  },
+
+  async fetchRulesForce() {
+    try {
+      set({ loading: true });
+
+      const rootStore = useRootStore.getState();
+
+      if (!rootStore.initialized) {
+        await rootStore.fetchCoreData();
+      }
+
+      const { user: appUser } = useRootStore.getState();
+
+      if (!appUser?.house_id) {
+        set({
+          rules: null,
+          loading: false,
+          initialized: true,
+          error: null,
+        });
+      }
+
+      const { data: rulesData, error: rulesError } = await supabase
+        .from("house_rules")
         .select("*")
         .eq("house_id", appUser?.house_id)
         .single();

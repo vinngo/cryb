@@ -48,7 +48,11 @@ const categories = [
 ];
 
 export default function ShoppingList() {
-  const { items: shoppingListItems, error } = useShoppingListStore();
+  const {
+    items: shoppingListItems,
+    error,
+    fetchShoppingListForce,
+  } = useShoppingListStore();
   const { user } = useUserStore.getState();
 
   useEffect(() => {
@@ -83,6 +87,7 @@ export default function ShoppingList() {
     setItems([...items, item]);
     setNewItem({ name: "", quantity: "", category: "Other" });
     setIsAddDialogOpen(false);
+    await fetchShoppingListForce();
   };
 
   const toggleItemCompletion = async (id: string, currentStatus: boolean) => {
@@ -103,6 +108,7 @@ export default function ShoppingList() {
       );
       console.error(error);
     }
+    await fetchShoppingListForce();
   };
 
   const deleteItem = (id: string) => {

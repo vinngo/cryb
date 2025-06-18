@@ -57,6 +57,7 @@ export default function ChoresPage() {
     chores: choresData,
     loading: choresLoading,
     fetchChoresData,
+    fetchChoresForce,
   } = useChoreStore();
   const { user, houseMembers, loading: rootLoading } = useRootStore();
   // Local state
@@ -110,7 +111,7 @@ export default function ChoresPage() {
       }
 
       // Fetch updated data from the server
-      await fetchChoresData();
+      await fetchChoresForce();
 
       // No need to manually update local state as it will be updated via the useEffect
     } catch (error) {
@@ -140,7 +141,7 @@ export default function ChoresPage() {
     await addNewChore(formData, user?.house_id);
 
     // Fetch updated chores data from the server
-    await fetchChoresData();
+    await fetchChoresForce();
 
     // Reset form state
     setDate(undefined);
