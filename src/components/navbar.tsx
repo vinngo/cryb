@@ -32,7 +32,7 @@ import { useChoreStore } from "@/lib/stores/choresStore";
 import { useExpenseStore } from "@/lib/stores/expensesStore";
 import { useNotesStore } from "@/lib/stores/notesStore";
 import { useRulesStore } from "@/lib/stores/rulesStore";
-import { useRootStore } from "@/lib/stores/rootStore";
+import { useUserStore } from "@/lib/stores/usersStore";
 import { useShoppingListStore } from "@/lib/stores/useShoppingListStore";
 import { usePollStore } from "@/lib/stores/pollsStore";
 import {
@@ -56,53 +56,51 @@ export default function Navbar() {
   const { fetchPollData } = usePollStore();
   const { fetchRulesData } = useRulesStore();
   const { fetchShoppingListData } = useShoppingListStore();
-  const { user, email } = useRootStore();
+  const { user, email, fetchUserData } = useUserStore();
 
   useEffect(() => {
-    const fetchData = async () => {
-      await useRootStore.getState().fetchCoreData();
-      switch (pathname) {
-        case "/dashboard":
-          fetchDashboardData();
-          break;
-        case "/chores":
-          fetchChoresData();
-          break;
-        case "/expenses":
-          fetchExpensesData();
-          break;
-        case "/shopping-list":
-          fetchShoppingListData();
-          break;
-        case "/notes":
-          fetchNotesData();
-          fetchPollData();
-          break;
-        case "/house-rules":
-          fetchRulesData();
-          break;
-      }
-    };
-    fetchData();
+    fetchUserData();
+    switch (pathname) {
+      case "/dashboard":
+        fetchDashboardData();
+        break;
+      case "/chores":
+        fetchChoresData();
+        break;
+      case "/expenses":
+        fetchExpensesData();
+        break;
+      case "/shopping-list":
+        fetchShoppingListData();
+        break;
+      case "/notes":
+        fetchNotesData();
+        fetchPollData();
+        break;
+      case "/house-rules":
+        fetchRulesData();
+        break;
+    }
   }, [
-    pathname,
-    fetchDashboardData,
     fetchChoresData,
+    fetchDashboardData,
     fetchExpensesData,
     fetchShoppingListData,
     fetchNotesData,
     fetchPollData,
     fetchRulesData,
+    fetchUserData,
+    pathname,
   ]);
 
   // Show dialog if user is logged in but not in a house/group
   useEffect(() => {
-    if (user && !user.house_id && pathname !== "/profile") {
+    if (user && !user.house_id) {
       setShowHouseDialog(true);
     } else {
       setShowHouseDialog(false);
     }
-  }, [user, pathname]);
+  }, [user]);
 
   const routes = [
     { name: "Dashboard", href: "/dashboard", icon: Home },
@@ -122,16 +120,14 @@ export default function Navbar() {
         onOpenChange={() => {}} // Prevent closing by clicking outside or pressing ESC
         modal
       >
-        <DialogContent className="max-w-sm mx-auto text-center flex flex-col items-center no-dialog-close">
+        <DialogContent
+          className="max-w-sm mx-auto text-center flex flex-col items-center no-dialog-close"
+        >
           <DialogHeader>
-            <DialogTitle className="text-2xl font-bold mb-2">
-              Welcome to Cryb!
-            </DialogTitle>
+            <DialogTitle className="text-2xl font-bold mb-2">Welcome to Cryb!</DialogTitle>
           </DialogHeader>
           <div className="space-y-2 mb-2">
-            <p className="text-base font-medium">
-              You are not part of a house yet.
-            </p>
+            <p className="text-base font-medium">You are not part of a house yet.</p>
             <p className="text-sm text-muted-foreground">
               Please create a new house or join an existing one to continue.
             </p>
@@ -142,7 +138,7 @@ export default function Navbar() {
               <Button
                 onClick={() => {
                   setShowHouseDialog(false);
-                  router.push("/profile?action=create-house");
+                  router.push("/create-house");
                 }}
                 className="w-1/2 rounded-md py-2 text-base"
               >
@@ -152,7 +148,7 @@ export default function Navbar() {
                 variant="outline"
                 onClick={() => {
                   setShowHouseDialog(false);
-                  router.push("/profile?action=join-house");
+                  router.push("/join-house");
                 }}
                 className="w-1/2 rounded-md py-2 text-base"
               >
@@ -189,7 +185,7 @@ export default function Navbar() {
                   "flex items-center gap-2 text-sm font-medium transition-colors hover:text-primary",
                   pathname === route.href
                     ? "text-primary"
-                    : "text-muted-foreground",
+                    : "text-muted-foreground"
                 )}
               >
                 <route.icon className="h-4 w-4" />
@@ -279,10 +275,10 @@ export default function Navbar() {
                         key={route.href}
                         href={route.href}
                         className={cn(
-                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all hover:bg-accent",
+                          "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-all",
                           pathname === route.href
                             ? "bg-accent text-accent-foreground"
-                            : "text-muted-foreground",
+                            : "text-white hover:text-white"
                         )}
                         onClick={() => setIsMenuOpen(false)}
                       >
@@ -291,11 +287,21 @@ export default function Navbar() {
                       </Link>
                     ))}
                   </nav>
-                  {/* Mobile Logout */}
+                  {/* Mobile Profile & Logout */}
                   <div className="p-4 border-t">
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       className="w-full justify-start"
+                      asChild
+                    >
+                      <Link href="/profile">
+                        <User className="mr-2 h-4 w-4" />
+                        Profile
+                      </Link>
+                    </Button>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start mt-2"
                       asChild
                     >
                       <Link href="/login">
