@@ -131,7 +131,9 @@ export const useNotesStore = create<NotesData>((set, get) => ({
   setupRealtimeNoteSubscription: () => {
     const { user } = useRootStore.getState();
 
-    if (!user?.house_id) return;
+    if (!user?.house_id) {
+      return;
+    }
 
     const channel = supabase
       .channel("note-changes")

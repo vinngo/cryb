@@ -67,7 +67,7 @@ export default function NotesPage() {
   const {
     polls: pollsData,
     loading: pollsLoading,
-    fetchPollsForce,
+    fetchPollData,
   } = usePollStore();
   const [polls, setPolls] = useState(pollsData);
   const [pollOptions, setPollOptions] = useState<Option[]>([
@@ -89,6 +89,13 @@ export default function NotesPage() {
       useNotesStore.getState().cleanupRealtimeNoteSubscription();
     };
   }, [fetchNotesData]);
+
+  useEffect(() => {
+    fetchPollData();
+    return () => {
+      usePollStore.getState().cleanupRealtimeSubscription();
+    };
+  }, [fetchPollData]);
 
   useEffect(() => {
     console.log("received changes!");
@@ -155,7 +162,9 @@ export default function NotesPage() {
       console.error(result?.error || "Failed to add poll");
     }
 
-    await fetchPollsForce();
+    const pollStore = usePollStore.getState();
+    pollStore.cleanupRealtimeSubscription();
+    pollStore.cleanupRealtimeSubscription();
 
     setIsDialogOpen(false);
     setIsPinned(false);
