@@ -45,6 +45,7 @@ export async function addNewExpense(
         expense_id: expenseData.id,
         user_id: paid_by,
         amount: amount / (split_between.length + 1),
+        house_id,
         note: "Owner of expense: already paid",
       });
 
@@ -60,6 +61,7 @@ export async function addNewExpense(
 export async function addNewContribution(
   formData: FormData,
   expense_id: string | undefined,
+  house_id: string | undefined,
 ) {
   const supabase = await createClient();
 
@@ -75,11 +77,16 @@ export async function addNewContribution(
       throw new Error("Expense needs to be valid");
     }
 
+    if (house_id === undefined) {
+      throw new Error("User needs to be in a house!");
+    }
+
     const { data, error } = await supabase.from("contributions").insert({
       expense_id,
       amount,
       user_id: paid_by,
       note,
+      house_id,
       date: trueDate,
     });
 

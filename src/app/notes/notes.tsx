@@ -60,14 +60,14 @@ export default function NotesPage() {
   const {
     notes: notesData,
     loading: notesLoading,
-    fetchNotesForce,
+    fetchNotesData,
   } = useNotesStore();
   const { user, houseMembers: members } = useRootStore.getState();
   const [notes, setNotes] = useState(notesData);
   const {
     polls: pollsData,
     loading: pollsLoading,
-    fetchPollsForce,
+    fetchPollData,
   } = usePollStore();
   const [polls, setPolls] = useState(pollsData);
   const [pollOptions, setPollOptions] = useState<Option[]>([
@@ -84,6 +84,21 @@ export default function NotesPage() {
   const currentUser = user;
 
   useEffect(() => {
+    fetchNotesData();
+    return () => {
+      useNotesStore.getState().cleanupRealtimeNoteSubscription();
+    };
+  }, [fetchNotesData]);
+
+  useEffect(() => {
+    fetchPollData();
+    return () => {
+      usePollStore.getState().cleanupRealtimeSubscription();
+    };
+  }, [fetchPollData]);
+
+  useEffect(() => {
+    console.log("received changes!");
     setNotes(notesData);
   }, [notesData]);
 
@@ -118,8 +133,6 @@ export default function NotesPage() {
       throw new Error(result?.error || "Failed to add note");
     }
 
-    await fetchNotesForce();
-
     setIsDialogOpen(false);
     setIsPinned(false);
   };
@@ -149,7 +162,9 @@ export default function NotesPage() {
       console.error(result?.error || "Failed to add poll");
     }
 
-    await fetchPollsForce();
+    const pollStore = usePollStore.getState();
+    pollStore.cleanupRealtimeSubscription();
+    pollStore.cleanupRealtimeSubscription();
 
     setIsDialogOpen(false);
     setIsPinned(false);
@@ -174,15 +189,20 @@ export default function NotesPage() {
         ),
       );
     }
-    await fetchNotesForce();
   };
 
   const deleteNote = async (id: string) => {
+    // Store original notes for potential revert
+    const originalNotes = [...notes];
+
+    // Optimistic UI update
     setNotes(notes.filter((note) => note.id !== id));
+
     const { success } = await deleteNoteAction(id);
 
     if (!success) {
-      setNotes(notes.filter((note) => note.id !== id));
+      // Revert to original notes if deletion fails
+      setNotes(originalNotes);
     }
   };
 
