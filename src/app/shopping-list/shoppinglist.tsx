@@ -33,7 +33,7 @@ import {
 } from "@/components/ui/card";
 import { EmptyState } from "@/components/empty-state";
 import { useShoppingListStore } from "@/lib/stores/useShoppingListStore";
-import { useUserStore } from "@/lib/stores/usersStore";
+import { useRootStore } from "@/lib/stores/rootStore";
 import { addShoppingListItem, updateItemStatus } from "./actions";
 
 const categories = [
@@ -53,7 +53,7 @@ export default function ShoppingList() {
     error,
     fetchShoppingListForce,
   } = useShoppingListStore();
-  const { user } = useUserStore.getState();
+  const { user } = useRootStore.getState();
 
   useEffect(() => {
     console.log(shoppingListItems);
