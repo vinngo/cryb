@@ -77,7 +77,7 @@ export interface ShoppingListItem {
   house_id: string;
   name: string;
   quantity: number;
-  added_by: string;
+  user_id: string;
   is_checked: boolean;
   category: string;
 }
