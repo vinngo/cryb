@@ -146,7 +146,6 @@ export const useNotesStore = create<NotesData>((set, get) => ({
           filter: `house_id=eq.${user.house_id}`,
         },
         (payload) => {
-          console.log("INSERT event received", payload);
           const currentNotes = get().notes;
           set({
             notes: [...currentNotes, payload.new as Note],
@@ -162,7 +161,6 @@ export const useNotesStore = create<NotesData>((set, get) => ({
           filter: `house_id=eq.${user.house_id}`,
         },
         (payload) => {
-          console.log("UPDATE event received", payload);
           const currentNotes = get().notes;
           const updatedNote = payload.new as Note;
           const updatedNotes = currentNotes.map((note) =>
@@ -180,7 +178,6 @@ export const useNotesStore = create<NotesData>((set, get) => ({
           // No filter for DELETE events
         },
         (payload) => {
-          console.log("DELETE event received", payload);
           const currentNotes = get().notes;
           // Since we're not filtering by house_id, we need to check it manually
           const deletedNoteId = payload.old.id;

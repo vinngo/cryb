@@ -34,7 +34,11 @@ import {
 import { EmptyState } from "@/components/empty-state";
 import { useShoppingListStore } from "@/lib/stores/useShoppingListStore";
 import { useRootStore } from "@/lib/stores/rootStore";
-import { addShoppingListItem, updateItemStatus } from "./actions";
+import {
+  addShoppingListItem,
+  updateItemStatus,
+  deleteShoppingListItem,
+} from "./actions";
 
 const categories = [
   "Dairy",
@@ -48,19 +52,9 @@ const categories = [
 ];
 
 export default function ShoppingList() {
-  const {
-    items: shoppingListItems,
-    error,
-    fetchShoppingListForce,
-  } = useShoppingListStore();
-  const { user } = useRootStore.getState();
-
-  useEffect(() => {
-    console.log(shoppingListItems);
-    if (error) {
-      console.log(error);
-    }
-  }, [error, shoppingListItems]);
+  const { items: shoppingListItems, fetchShoppingListData } =
+    useShoppingListStore();
+  const { user, houseMembers } = useRootStore.getState();
 
   const [items, setItems] = useState(shoppingListItems);
   const [newItem, setNewItem] = useState({
@@ -70,6 +64,13 @@ export default function ShoppingList() {
   });
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [filter, setFilter] = useState("all"); // all, pending, completed
+
+  useEffect(() => {
+    fetchShoppingListData();
+    return () => {
+      useShoppingListStore.getState().cleanupRealtimeListSubscription();
+    };
+  }, [fetchShoppingListData]);
 
   useEffect(() => {
     setItems(shoppingListItems);
@@ -87,7 +88,6 @@ export default function ShoppingList() {
     setItems([...items, item]);
     setNewItem({ name: "", quantity: "", category: "Other" });
     setIsAddDialogOpen(false);
-    await fetchShoppingListForce();
   };
 
   const toggleItemCompletion = async (id: string, currentStatus: boolean) => {
@@ -108,11 +108,19 @@ export default function ShoppingList() {
       );
       console.error(error);
     }
-    await fetchShoppingListForce();
   };
 
-  const deleteItem = (id: string) => {
+  const deleteItem = async (id: string) => {
+    const deletedItem = items.find((item) => item.id === id);
+
     setItems(items.filter((item) => item.id !== id));
+
+    const { error } = await deleteShoppingListItem(id);
+
+    if (error && deletedItem) {
+      setItems([...items, deletedItem]);
+      console.error(error);
+    }
   };
 
   const filteredItems = items.filter((item) => {
@@ -308,7 +316,9 @@ export default function ShoppingList() {
                     <div className="flex items-center space-x-2">
                       <Avatar className="h-6 w-6">
                         <AvatarFallback>
-                          {user?.display_name.charAt(0)}
+                          {houseMembers
+                            ?.find((member) => member.user_id === item.user_id)
+                            ?.name.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
                       <Button
