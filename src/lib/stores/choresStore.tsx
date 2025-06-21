@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "../supabase/client";
+import { RealtimeChannel } from "@supabase/supabase-js";
 import { Chore } from "../../../types/database";
 import { useRootStore } from "./rootStore";
 
@@ -10,9 +11,12 @@ interface ChoresData {
   initialized: boolean;
   fetchChoresData: () => Promise<void>;
   fetchChoresForce: () => Promise<void>;
+  realtimeSubscription: RealtimeChannel | null;
+  setupRealtimeSubscription: () => void;
+  cleanupRealtimeSubscription: () => void;
 }
 
-export const useChoreStore = create<ChoresData>((set) => ({
+export const useChoreStore = create<ChoresData>((set, get) => ({
   chores: [],
   loading: true,
   error: null,
@@ -65,6 +69,9 @@ export const useChoreStore = create<ChoresData>((set) => ({
         loading: false,
       });
     }
+
+    const { setupRealtimeSubscription } = useChoreStore.getState();
+    setupRealtimeSubscription();
   },
 
   async fetchChoresForce() {
@@ -108,6 +115,55 @@ export const useChoreStore = create<ChoresData>((set) => ({
         error: message,
         loading: false,
       });
+    }
+
+    const { setupRealtimeSubscription } = useChoreStore.getState();
+    setupRealtimeSubscription();
+  },
+
+  realtimeSubscription: null,
+  setupRealtimeSubscription: () => {
+    const { user } = useRootStore.getState();
+    if (!user?.house_id) return;
+
+    const channel = supabase
+      .channel("chores-changes")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "chores",
+          filter: `house_id=eq.${user.house_id}`,
+        },
+        (payload) => {
+          const currentChores = get().chores;
+
+          if (payload.eventType === "INSERT") {
+            set({ chores: [...currentChores, payload.new as Chore] });
+          } else if (payload.eventType === "UPDATE") {
+            set({
+              chores: currentChores.map((chore) =>
+                chore.id === payload.new.id ? (payload.new as Chore) : chore,
+              ),
+            });
+          } else if (payload.eventType === "DELETE") {
+            set({
+              chores: currentChores.filter(
+                (chore) => chore.id !== payload.old.id,
+              ),
+            });
+          }
+        },
+      )
+      .subscribe();
+    set({ realtimeSubscription: channel });
+  },
+  cleanupRealtimeSubscription: () => {
+    const subscription = get().realtimeSubscription;
+    if (subscription) {
+      supabase.removeChannel(subscription);
+      set({ realtimeSubscription: null });
     }
   },
 }));

@@ -68,6 +68,7 @@ export interface Contribution {
   expense_id: string;
   user_id: string;
   amount: number;
+  house_id: string;
   note?: string;
 }
 
@@ -76,7 +77,7 @@ export interface ShoppingListItem {
   house_id: string;
   name: string;
   quantity: number;
-  added_by: string;
+  user_id: string;
   is_checked: boolean;
   category: string;
 }

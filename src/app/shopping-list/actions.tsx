@@ -42,3 +42,18 @@ export async function updateItemStatus(item_id: string, status: boolean) {
   }
   return { error: null };
 }
+
+export async function deleteShoppingListItem(item_id: string) {
+  const supabase = await createClient();
+
+  const { error: deleteError } = await supabase
+    .from("shopping_list")
+    .delete()
+    .eq("id", item_id);
+
+  if (deleteError) {
+    console.error(deleteError);
+    return { error: deleteError };
+  }
+  return { error: null };
+}

@@ -17,6 +17,7 @@ import { PollOption, PollVote } from "../../../types/database";
 import { votePoll, removeVote, removeVotes } from "./actions";
 import { useState, useEffect } from "react";
 import { useRootStore } from "@/lib/stores/rootStore";
+import { usePollStore } from "@/lib/stores/pollsStore";
 
 export default function Poll({
   id,
@@ -27,13 +28,18 @@ export default function Poll({
   expires_at,
 }: PollProps) {
   const { user } = useRootStore();
+  const { polls } = usePollStore();
 
   const now = new Date();
 
   const expiresAtDate =
     typeof expires_at === "string" ? new Date(expires_at) : expires_at;
 
-  const [votesData, setVotesData] = useState(initialVotesData);
+  // Get the latest poll data from the store
+  const currentPoll = polls.find(poll => poll.id === id);
+  
+  // Use the most up-to-date votes data from the store if available, otherwise use props
+  const [votesData, setVotesData] = useState(currentPoll?.votes || initialVotesData);
   const [selectedOption, setSelectedOption] = useState<PollOption | undefined>(
     undefined,
   );
@@ -42,6 +48,13 @@ export default function Poll({
   const [votes, setVotes] = useState<PollVote[]>([]);
   const [winners, setWinners] = useState<PollOption[]>([]);
   const [expired] = useState(expiresAtDate < now);
+
+  // Update votesData whenever the store data changes
+  useEffect(() => {
+    if (currentPoll) {
+      setVotesData(currentPoll.votes);
+    }
+  }, [currentPoll]);
 
   // Calculate winner(s) whenever votes change or when poll expires
   useEffect(() => {
@@ -167,6 +180,7 @@ export default function Poll({
       const { data, success, error } = await votePoll(
         id,
         user.id,
+        user.house_id,
         selectedOption.id,
       );
 
@@ -202,6 +216,7 @@ export default function Poll({
       const { data, success, error } = await votePoll(
         id,
         user.id,
+        user.house_id,
         undefined,
         selectedOptions,
       );

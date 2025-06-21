@@ -5,6 +5,7 @@ import { PollOption, PollVote } from "../../../types/database";
 export async function votePoll(
   poll_id: string,
   user_id: string,
+  house_id: string,
   option_id?: string,
   options?: PollOption[],
 ): Promise<{
@@ -16,6 +17,10 @@ export async function votePoll(
 
   if (!poll_id || !user_id) {
     return { success: false, data: null, error: "Missing required parameters" };
+  }
+
+  if (!house_id) {
+    return { success: false, data: null, error: "Missing house_id parameter." };
   }
 
   if (!option_id && !options) {
@@ -40,6 +45,7 @@ export async function votePoll(
         .insert({
           poll_id,
           user_id,
+          house_id,
           option_id,
         })
         .select()
@@ -61,6 +67,7 @@ export async function votePoll(
           .insert({
             poll_id,
             user_id,
+            house_id,
             option_id: option.id,
           })
           .select()
