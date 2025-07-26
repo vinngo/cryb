@@ -6,7 +6,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
-  CalendarDays,
   ClipboardList,
   ShoppingBasket,
   DollarSign,
@@ -28,13 +27,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useDashboardStore } from "@/lib/stores/dashboardStore";
-import { useChoreStore } from "@/lib/stores/choresStore";
-import { useExpenseStore } from "@/lib/stores/expensesStore";
-import { useNotesStore } from "@/lib/stores/notesStore";
-import { useRulesStore } from "@/lib/stores/rulesStore";
 import { useRootStore } from "@/lib/stores/rootStore";
-import { useShoppingListStore } from "@/lib/stores/useShoppingListStore";
-import { usePollStore } from "@/lib/stores/pollsStore";
 import {
   Dialog,
   DialogContent,
@@ -50,12 +43,6 @@ export default function Navbar() {
   const [showHouseDialog, setShowHouseDialog] = useState(false);
 
   const { fetchDashboardData } = useDashboardStore();
-  const { fetchChoresData } = useChoreStore();
-  const { fetchExpensesData } = useExpenseStore();
-  const { fetchNotesData } = useNotesStore();
-  const { fetchPollData } = usePollStore();
-  const { fetchRulesData } = useRulesStore();
-  const { fetchShoppingListData } = useShoppingListStore();
   const { user, email } = useRootStore();
 
   useEffect(() => {
@@ -65,35 +52,10 @@ export default function Navbar() {
         case "/dashboard":
           fetchDashboardData();
           break;
-        case "/chores":
-          fetchChoresData();
-          break;
-        case "/expenses":
-          fetchExpensesData();
-          break;
-        case "/shopping-list":
-          fetchShoppingListData();
-          break;
-        case "/notes":
-          fetchNotesData();
-          fetchPollData();
-          break;
-        case "/house-rules":
-          fetchRulesData();
-          break;
       }
     };
     fetchData();
-  }, [
-    pathname,
-    fetchDashboardData,
-    fetchChoresData,
-    fetchExpensesData,
-    fetchShoppingListData,
-    fetchNotesData,
-    fetchPollData,
-    fetchRulesData,
-  ]);
+  }, [pathname, fetchDashboardData]);
 
   // Show dialog if user is logged in but not in a house/group
   useEffect(() => {
@@ -111,7 +73,6 @@ export default function Navbar() {
     { name: "Shopping List", href: "/shopping-list", icon: ShoppingBasket },
     { name: "Notes", href: "/notes", icon: FileText },
     { name: "House Rules", href: "/house-rules", icon: Users },
-    { name: "Calendar", href: "/calendar", icon: CalendarDays },
   ];
 
   return (
