@@ -131,29 +131,53 @@ export const useChoreStore = create<ChoresData>((set, get) => ({
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "chores",
           filter: `house_id=eq.${user.house_id}`,
         },
         (payload) => {
           const currentChores = get().chores;
-
-          if (payload.eventType === "INSERT") {
-            set({ chores: [...currentChores, payload.new as Chore] });
-          } else if (payload.eventType === "UPDATE") {
-            set({
-              chores: currentChores.map((chore) =>
-                chore.id === payload.new.id ? (payload.new as Chore) : chore,
-              ),
-            });
-          } else if (payload.eventType === "DELETE") {
-            set({
-              chores: currentChores.filter(
-                (chore) => chore.id !== payload.old.id,
-              ),
-            });
-          }
+          set({
+            chores: [...currentChores, payload.new as Chore],
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "chores",
+          filter: `house_id=eq.${user.house_id}`,
+        },
+        (payload) => {
+          const currentChores = get().chores;
+          const updatedChore = payload.new as Chore;
+          const updatedChores = currentChores.map((chore) =>
+            chore.id === updatedChore.id ? updatedChore : chore,
+          );
+          set({
+            chores: updatedChores,
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "chores",
+        },
+        (payload) => {
+          const currentChores = get().chores;
+          const deletedChoreId = payload.old.id;
+          const updatedChores = currentChores.filter(
+            (chore) => chore.id !== deletedChoreId,
+          );
+          set({
+            chores: updatedChores,
+          });
         },
       )
       .subscribe();

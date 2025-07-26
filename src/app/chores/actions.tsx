@@ -2,7 +2,7 @@
 
 import { createClient } from "@/lib/supabase/server";
 
-export default async function addNewChore(
+export async function addNewChore(
   formData: FormData,
   house_id: string | undefined,
 ) {
@@ -13,11 +13,9 @@ export default async function addNewChore(
   const assignedTo = formData.get("assigned_to") as string;
   const dueDate = formData.get("due_date") as string;
 
-  const dueDateinDate = new Date(dueDate);
+  const dueDateinDate = new Date(dueDate + "T00:00:00");
 
   try {
-    // TODO: Get house_id from user session
-
     if (house_id === undefined) {
       throw new Error("User needs to be in a house!");
     }
@@ -55,6 +53,21 @@ export async function updateChore(choreId: string, completed: boolean) {
     return { success: true, data };
   } catch (error) {
     console.error("Failed to update chore:", error);
+    return { success: false, error: (error as Error).message };
+  }
+}
+
+export async function deleteChore(choreId: string) {
+  const supabase = await createClient();
+
+  try {
+    const { error } = await supabase.from("chores").delete().eq("id", choreId);
+
+    if (error) throw new Error(error.message);
+
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete chore:", error);
     return { success: false, error: (error as Error).message };
   }
 }

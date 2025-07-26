@@ -32,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, Plus, Home } from "lucide-react";
+import { CalendarIcon, Plus, Home, TrashIcon } from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -45,7 +45,7 @@ import { cn } from "@/lib/utils";
 import { useSearchParams } from "next/navigation";
 import { useChoreStore } from "@/lib/stores/choresStore";
 import { useRootStore } from "@/lib/stores/rootStore";
-import addNewChore, { updateChore } from "./actions";
+import { addNewChore, deleteChore, updateChore } from "./actions";
 import { Chore } from "../../../types/database";
 import { EmptyState } from "@/components/empty-state";
 import { useToast } from "@/hooks/use-toast";
@@ -72,7 +72,7 @@ export default function ChoresPage() {
   // Initial data fetch
   useEffect(() => {
     fetchChoresData();
-
+    useChoreStore.getState().setupRealtimeSubscription();
     return () => {
       useChoreStore.getState().cleanupRealtimeSubscription();
     };
@@ -236,7 +236,7 @@ export default function ChoresPage() {
                     <input
                       type="hidden"
                       name="due_date"
-                      value={date ? date.toISOString() : ""}
+                      value={date ? date.toISOString().split("T")[0] : ""}
                     />
                   </div>
                 </div>
@@ -312,27 +312,40 @@ export default function ChoresPage() {
                                 <span>
                                   Due{" "}
                                   {new Date(
-                                    chore.due_date,
+                                    chore.due_date + "T00:00:00",
                                   ).toLocaleDateString()}
                                 </span>
                               </div>
                             </div>
                           </div>
-                          <Badge
-                            variant={
-                              getChoreVariant(
-                                new Date(chore.due_date).toLocaleDateString(),
-                              ) as
-                                | "destructive"
-                                | "outline"
-                                | "default"
-                                | "secondary"
-                            }
-                          >
-                            {getChoreStatus(
-                              new Date(chore.due_date).toLocaleDateString(),
-                            )}
-                          </Badge>
+                          <div className="flex items-center space-x-2">
+                            <Badge
+                              variant={
+                                getChoreVariant(
+                                  new Date(
+                                    chore.due_date + "T00:00:00",
+                                  ).toLocaleDateString(),
+                                ) as
+                                  | "destructive"
+                                  | "outline"
+                                  | "default"
+                                  | "secondary"
+                              }
+                            >
+                              {getChoreStatus(
+                                new Date(
+                                  chore.due_date + "T00:00:00",
+                                ).toLocaleDateString(),
+                              )}
+                            </Badge>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteChore(chore.id)}
+                            >
+                              <TrashIcon className="h-1 w-1" />
+                            </Button>
+                          </div>
                         </div>
                       );
                     })}
@@ -388,6 +401,15 @@ export default function ChoresPage() {
                                 </span>
                               </div>
                             </div>
+                          </div>
+                          <div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteChore(chore.id)}
+                            >
+                              <TrashIcon className="h-1 w-1" />
+                            </Button>
                           </div>
                         </div>
                       );

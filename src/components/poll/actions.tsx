@@ -122,3 +122,22 @@ export async function removeVotes(
     return { success: false, error: e as Error };
   }
 }
+
+export async function removePoll(
+  poll_id: string,
+): Promise<{ success: boolean; error: string | Error | null }> {
+  const supabase = await createClient();
+
+  try {
+    const { error: removePollError } = await supabase
+      .from("polls")
+      .delete()
+      .eq("id", poll_id);
+    if (removePollError) {
+      return { success: false, error: removePollError };
+    }
+    return { success: true, error: null };
+  } catch (e) {
+    return { success: false, error: e as Error };
+  }
+}

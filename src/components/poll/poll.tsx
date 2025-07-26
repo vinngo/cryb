@@ -12,9 +12,10 @@ import {
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "../ui/checkbox";
 import { Button } from "../ui/button";
+import { X } from "lucide-react";
 import { PollProps } from "../../../types/poll";
 import { PollOption, PollVote } from "../../../types/database";
-import { votePoll, removeVote, removeVotes } from "./actions";
+import { votePoll, removePoll, removeVote, removeVotes } from "./actions";
 import { useState, useEffect } from "react";
 import { useRootStore } from "@/lib/stores/rootStore";
 import { usePollStore } from "@/lib/stores/pollsStore";
@@ -36,10 +37,12 @@ export default function Poll({
     typeof expires_at === "string" ? new Date(expires_at) : expires_at;
 
   // Get the latest poll data from the store
-  const currentPoll = polls.find(poll => poll.id === id);
-  
+  const currentPoll = polls.find((poll) => poll.id === id);
+
   // Use the most up-to-date votes data from the store if available, otherwise use props
-  const [votesData, setVotesData] = useState(currentPoll?.votes || initialVotesData);
+  const [votesData, setVotesData] = useState(
+    currentPoll?.votes || initialVotesData,
+  );
   const [selectedOption, setSelectedOption] = useState<PollOption | undefined>(
     undefined,
   );
@@ -288,7 +291,15 @@ export default function Poll({
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="relative">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="absolute top-2 right-2 p-1 h-auto"
+          onClick={() => removePoll(id)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
         <CardTitle>{title}</CardTitle>
         {multipleChoice ? (
           <CardDescription>Select one or more answers</CardDescription>

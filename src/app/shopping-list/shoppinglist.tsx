@@ -67,6 +67,7 @@ export default function ShoppingList() {
 
   useEffect(() => {
     fetchShoppingListData();
+    useShoppingListStore.getState().setupRealtimeListSubscription();
     return () => {
       useShoppingListStore.getState().cleanupRealtimeListSubscription();
     };

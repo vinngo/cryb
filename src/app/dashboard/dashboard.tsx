@@ -125,6 +125,7 @@ export default function Dashboard() {
             </>
           ) : (
             <>
+              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
               <Skeleton className="h-5 w-100" />
             </>
           )}
@@ -297,7 +298,7 @@ export default function Dashboard() {
                                 <p className="text-sm text-muted-foreground">
                                   Due{" "}
                                   {new Date(
-                                    chore.due_date,
+                                    chore.due_date + "T00:00:00",
                                   ).toLocaleDateString()}
                                 </p>
                               </div>
@@ -305,7 +306,9 @@ export default function Dashboard() {
                             <Badge
                               variant={
                                 getChoreVariant(
-                                  new Date(chore.due_date).toLocaleDateString(),
+                                  new Date(
+                                    chore.due_date + "T00:00:00",
+                                  ).toLocaleDateString(),
                                 ) as
                                   | "destructive"
                                   | "outline"
@@ -314,7 +317,9 @@ export default function Dashboard() {
                               }
                             >
                               {getChoreStatus(
-                                new Date(chore.due_date).toLocaleDateString(),
+                                new Date(
+                                  chore.due_date + "T00:00:00",
+                                ).toLocaleDateString(),
                               )}
                             </Badge>
                           </div>
@@ -494,7 +499,9 @@ export default function Dashboard() {
                             <span>•</span>
                             <span>
                               Due{" "}
-                              {new Date(chore.due_date).toLocaleDateString()}
+                              {new Date(
+                                chore.due_date + "T00:00:00",
+                              ).toLocaleDateString()}
                             </span>
                           </div>
                         </div>
@@ -502,7 +509,9 @@ export default function Dashboard() {
                       <Badge
                         variant={
                           getChoreVariant(
-                            new Date(chore.due_date).toLocaleDateString(),
+                            new Date(
+                              chore.due_date + "T00:00:00",
+                            ).toLocaleDateString(),
                           ) as
                             | "default"
                             | "destructive"
@@ -511,7 +520,9 @@ export default function Dashboard() {
                         }
                       >
                         {getChoreStatus(
-                          new Date(chore.due_date).toLocaleDateString(),
+                          new Date(
+                            chore.due_date + "T00:00:00",
+                          ).toLocaleDateString(),
                         )}
                       </Badge>
                     </div>
