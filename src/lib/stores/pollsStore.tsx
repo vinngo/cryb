@@ -254,7 +254,6 @@ export const usePollStore = create<PollsData>((set, get) => ({
       // Create a single channel for both polls and votes
       const channel = supabase
         .channel(`polls-and-votes-${Date.now()}`)
-        // Poll INSERT events
         .on(
           "postgres_changes",
           {
@@ -294,6 +293,27 @@ export const usePollStore = create<PollsData>((set, get) => ({
               set({ polls: [...currentPolls, newPoll] });
             } catch (error) {
               console.error("Error processing poll insert:", error);
+            }
+          },
+        )
+        //Poll DELETE EVENTS
+        .on(
+          "postgres_changes",
+          {
+            event: "DELETE",
+            schema: "public",
+            table: "polls",
+          },
+          (payload) => {
+            try {
+              const currentPolls = get().polls;
+              const pollId = payload.old.id;
+
+              const updatedPolls = currentPolls.filter((p) => p.id !== pollId);
+
+              set({ polls: updatedPolls });
+            } catch (error) {
+              console.error("Error processing poll delete:", error);
             }
           },
         )

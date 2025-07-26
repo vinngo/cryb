@@ -85,6 +85,7 @@ export default function NotesPage() {
 
   useEffect(() => {
     fetchNotesData();
+    useNotesStore.getState().setupRealtimeNoteSubscription();
     return () => {
       useNotesStore.getState().cleanupRealtimeNoteSubscription();
     };
@@ -92,13 +93,13 @@ export default function NotesPage() {
 
   useEffect(() => {
     fetchPollData();
+    usePollStore.getState().setupRealtimeSubscription();
     return () => {
       usePollStore.getState().cleanupRealtimeSubscription();
     };
   }, [fetchPollData]);
 
   useEffect(() => {
-    console.log("received changes!");
     setNotes(notesData);
   }, [notesData]);
 
