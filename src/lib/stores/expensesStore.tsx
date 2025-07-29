@@ -170,29 +170,32 @@ export const useExpenseStore = create<ExpensesData>((set, get) => ({
       .on(
         "postgres_changes",
         {
-          event: "*",
+          event: "INSERT",
           schema: "public",
           table: "expenses",
           filter: `house_id=eq.${user.house_id}`,
         },
         (payload) => {
           const currentExpenses = get().expenses;
-
-          if (payload.eventType === "INSERT") {
-            set({ expenses: [...currentExpenses, payload.new as Expense] });
-          } else if (payload.eventType === "UPDATE") {
-            const updatedExpense = payload.new as Expense;
-            const updatedExpenses = currentExpenses.map((expense) =>
-              expense.id === updatedExpense.id ? updatedExpense : expense,
-            );
-            set({ expenses: updatedExpenses });
-          } else if (payload.eventType === "DELETE") {
-            set({
-              expenses: currentExpenses.filter(
-                (expense) => expense.id !== payload.old.id,
-              ),
-            });
-          }
+          set({
+            expenses: [...currentExpenses, payload.new as Expense],
+          });
+        },
+      )
+      .on(
+        "postgres_changes",
+        {
+          event: "DELETE",
+          schema: "public",
+          table: "expenses",
+        },
+        (payload) => {
+          const currentExpenses = get().expenses;
+          const deletedExpenseId = payload.old.id;
+          const updatedExpenses = currentExpenses.filter(
+            (expense) => expense.id !== deletedExpenseId,
+          );
+          set({ expenses: updatedExpenses });
         },
       )
       .subscribe();

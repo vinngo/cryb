@@ -32,7 +32,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CalendarIcon, DollarSign, Plus, CreditCard, Home } from "lucide-react";
+import {
+  CalendarIcon,
+  DollarSign,
+  Plus,
+  CreditCard,
+  Home,
+  X,
+} from "lucide-react";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -54,7 +61,7 @@ import {
 import { useExpenseStore } from "@/lib/stores/expensesStore";
 import { useRootStore } from "@/lib/stores/rootStore";
 import { Contribution, Expense } from "../../../types/database";
-import { addNewExpense, addNewContribution } from "./actions";
+import { addNewExpense, addNewContribution, deleteExpense } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -75,6 +82,8 @@ export default function ExpensesPage() {
   //initial fetch
   useEffect(() => {
     fetchExpensesData();
+    useExpenseStore.getState().setupRealtimeExpenseSubscription();
+    useExpenseStore.getState().setupRealtimeContributionSubscription();
     return () => {
       useExpenseStore.getState().cleanupRealtimeExpenseSubscription();
       useExpenseStore.getState().cleanupRealtimeContributionSubscription();
@@ -651,18 +660,6 @@ export default function ExpensesPage() {
                         .toFixed(2)}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center pb-2 border-b">
-                    <span className="text-muted-foreground">
-                      Your Contributions
-                    </span>
-                    <span className="font-medium">
-                      $
-                      {contributions
-                        .filter((c) => c.user_id === currentUser?.id)
-                        .reduce((sum, c) => sum + c.amount, 0)
-                        .toFixed(2)}
-                    </span>
-                  </div>
                   <div className="flex justify-between items-center pt-2">
                     <span className="font-medium">Net Balance</span>
                     <span
@@ -670,8 +667,8 @@ export default function ExpensesPage() {
                         (balances?.find(
                           (b) => b.user.user_id === currentUser?.id,
                         )?.balance ?? 0 >= 0)
-                          ? "text-red-500"
-                          : "text-green-500"
+                          ? "text-green-500"
+                          : "text-red-500"
                       }`}
                     >
                       $
@@ -737,9 +734,17 @@ export default function ExpensesPage() {
                   return (
                     <div
                       key={expense.id}
-                      className="flex flex-col border rounded-lg p-4"
+                      className="flex flex-col border rounded-lg p-4 relative"
                     >
-                      <div className="flex items-center justify-between mb-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="absolute top-2 right-2 p-1 h-auto"
+                        onClick={() => deleteExpense(expense.id)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                      <div className="flex items-center justify-between mb-2 pr-8">
                         <div className="flex items-center gap-4">
                           <DollarSign className="h-5 w-5 text-muted-foreground" />
                           <div>
