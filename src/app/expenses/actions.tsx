@@ -58,6 +58,21 @@ export async function addNewExpense(
   }
 }
 
+export async function deleteExpense(id: string) {
+  const supabase = await createClient();
+
+  try {
+    const { error } = await supabase.from("expenses").delete().eq("id", id);
+
+    if (error) throw new Error(error.message);
+
+    return { success: true, error: null };
+  } catch (e) {
+    console.error("Failed to delete expense:", e);
+    return { success: false, error: (e as Error).message };
+  }
+}
+
 export async function addNewContribution(
   formData: FormData,
   expense_id: string | undefined,
@@ -89,7 +104,6 @@ export async function addNewContribution(
       house_id,
       date: trueDate,
     });
-
     if (error) throw new Error(error.message);
 
     return { success: true, data, error: null };
